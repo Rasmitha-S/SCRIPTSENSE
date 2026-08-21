@@ -1,0 +1,36 @@
+# Environment & Credentials
+.env
+*.env
+google-credentials.json
+backend/google-credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+*.db
+*.sqlite3
+*.backup_*
+.pytest_cache/
+*.log
+
+# Uploads directory
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Binaries and local tools
+backend/bin/
+bin/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/
+.vscode/
+.DS_Store
