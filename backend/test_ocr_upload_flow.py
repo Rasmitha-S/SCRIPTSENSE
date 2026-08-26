@@ -61,9 +61,9 @@ def test_ocr_upload_module():
     # 3. Verify SQLite Persistence
     print("\n[3] Verifying SQLite Database Persistence...")
     from database import SessionLocal
-    import models
+    from models import AnswerSheet
     db = SessionLocal()
-    saved_sheet = db.query(models.AnswerSheet).filter(models.AnswerSheet.id == sheet_id).first()
+    saved_sheet = db.query(AnswerSheet).filter(AnswerSheet.id == sheet_id).first()
     assert saved_sheet is not None, "Answer sheet not found in SQLite"
     assert saved_sheet.extracted_text == extracted_text, "Extracted text in SQLite does not match API response"
     print("    [PASS] Database record confirmed in SQLite (answer_sheets.extracted_text).")

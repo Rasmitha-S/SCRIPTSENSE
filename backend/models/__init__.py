@@ -1,15 +1,39 @@
-import importlib.util
 import os
 import sys
+import importlib.util
 
-# Load SQLAlchemy models from root backend/models.py so that both
-# `import models` (with models.User, models.Student, etc.) AND
-# `from models.handwriting_cnn import load_model` work simultaneously.
+# Re-export all SQLAlchemy models from root backend/models.py
 models_py_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models.py")
-if os.path.exists(models_py_path):
-    spec = importlib.util.spec_from_file_location("root_models", models_py_path)
-    root_models = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(root_models)
-    for k, v in root_models.__dict__.items():
-        if not k.startswith("__"):
-            globals()[k] = v
+spec = importlib.util.spec_from_file_location("root_models", models_py_path)
+if spec and spec.loader:
+    _root_models = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(_root_models)
+    
+    Base = _root_models.Base
+    User = _root_models.User
+    Test = _root_models.Test
+    Student = _root_models.Student
+    AnswerSheet = _root_models.AnswerSheet
+    ModelAnswer = _root_models.ModelAnswer
+    Evaluation = _root_models.Evaluation
+    FinalResult = _root_models.FinalResult
+    test_students = _root_models.test_students
+    utc_now = _root_models.utc_now
+
+    for _k, _v in _root_models.__dict__.items():
+        if not _k.startswith("__"):
+            globals()[_k] = _v
+
+__all__ = [
+    "Base",
+    "User",
+    "Test",
+    "Student",
+    "AnswerSheet",
+    "ModelAnswer",
+    "Evaluation",
+    "FinalResult",
+    "test_students",
+    "utc_now",
+]
+

@@ -61,7 +61,7 @@ if os.path.exists(img_path):
     p1 = preprocess_v1(img)
     res1 = reader.readtext(np.array(p1), detail=0, paragraph=True)
     t1 = time.time()
-    print(f"V1 Output ({round(t1-t0, 2)}s):\n", "\n".join(res1))
+    print(f"V1 Output ({round(t1-t0, 2)}s):\n", "\n".join([str(r) for r in res1]))
     
     # 2. V2 with tuned parameters
     t0 = time.time()
@@ -77,4 +77,4 @@ if os.path.exists(img_path):
         width_ths=0.7
     )
     t1 = time.time()
-    print(f"\nV2 Output ({round(t1-t0, 2)}s):\n", "\n".join(res2))
+    print(f"\nV2 Output ({round(t1-t0, 2)}s):\n", "\n".join([str(r) for r in res2]))

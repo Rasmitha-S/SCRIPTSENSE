@@ -1,6 +1,7 @@
 import os
 import io
 import re
+import base64
 import logging
 import time
 import itertools
@@ -8,6 +9,7 @@ from typing import Optional, List, Tuple, Set
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from PIL import Image, ImageOps, ImageEnhance
 from pdf2image import convert_from_path
+import requests
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -418,7 +420,13 @@ def extract_text_with_easyocr(image_bytes: bytes, min_confidence: float = 0.25) 
             mag_ratio=1.0
         )
 
-        filtered = [d for d in results if float(d[2]) >= min_confidence and str(d[1]).strip()]
+        filtered = []
+        for item in results:
+            if isinstance(item, (list, tuple)) and len(item) >= 3:
+                conf_val = float(item[2])
+                txt_val = str(item[1]).strip()
+                if conf_val >= min_confidence and txt_val:
+                    filtered.append((item[0], txt_val, conf_val))
         lines = sort_and_group_detections(filtered)
         raw_text = clean_ocr_text("\n".join(lines))
         
@@ -462,17 +470,108 @@ def extract_text_with_tesseract(image_bytes: bytes) -> str:
         return ""
 
 
+def is_valid_gemini_key(api_key: Optional[str] = None) -> bool:
+    """Checks whether a non-placeholder Gemini API key is configured."""
+    if not api_key:
+        api_key = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
+    return bool(api_key and len(api_key) > 10 and not api_key.startswith("your_"))
+
+
+def extract_text_with_gemini_vision(image_bytes: bytes, mime_type: str = "image/png") -> str:
+    """
+    Extracts text using Gemini 1.5 Flash REST API with inline image data.
+    Works natively via HTTP requests without requiring SDK installation.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
+    if not is_valid_gemini_key(api_key):
+        return ""
+
+    try:
+        b64_image = base64.b64encode(image_bytes).decode("utf-8")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": "Extract all handwritten and printed text from this image accurately. Return only the extracted text without introductory or conversational filler."},
+                        {
+                            "inline_data": {
+                                "mime_type": mime_type,
+                                "data": b64_image
+                            }
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 2048
+            }
+        }
+        resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=12)
+        if resp.status_code == 200:
+            res_json = resp.json()
+            candidates = res_json.get("candidates", [])
+            if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
+                extracted = candidates[0]["content"]["parts"][0].get("text", "").strip()
+                if extracted:
+                    return extracted
+        logger.info(f"Gemini Vision REST notice: HTTP {resp.status_code}")
+        return ""
+    except Exception as e:
+        logger.info(f"Gemini Vision extraction notice: {e}")
+        return ""
+
+
+_vision_client = None
+
+def get_vision_client():
+    """Returns initialized Google Vision client if available."""
+    global _vision_client
+    return _vision_client
+
+def extract_text_with_vision_api(image_bytes: bytes) -> str:
+    """Optional Google Cloud Vision API extractor."""
+    client = get_vision_client()
+    if client is None:
+        return ""
+    try:
+        response = client.document_text_detection(image={"content": image_bytes})
+        if response and hasattr(response, "full_text_annotation") and response.full_text_annotation:
+            return str(response.full_text_annotation.text).strip()
+        return ""
+    except Exception:
+        return ""
+
+
 def extract_text_with_priority_pipeline(image_bytes: bytes, filename: str = "image") -> Tuple[str, str]:
     """
     Runs the fast OCR pipeline with built-in timeout safeguards:
-    1. Primary: EasyOCR (Fast Local PyTorch with 20s timeout & 'r' repair)
-    2. Fallback: Tesseract OCR (if EasyOCR fails or returns empty)
-    3. Safe Failure: Returns user-friendly failure message without blocking.
+    1. Primary: Gemini Vision (if valid API key is present)
+    2. Primary Local: EasyOCR (Fast Local PyTorch with 20s timeout & 'r' repair)
+    3. Fallback: Tesseract OCR (if EasyOCR fails or returns empty)
+    4. Safe Failure: Returns user-friendly failure message without blocking.
     """
     t0 = time.time()
     print(f"[OCR PIPELINE] Starting fast OCR extraction for '{filename}'...")
 
-    # 1. Primary Engine: EasyOCR with 20-second timeout guard
+    # 1. Primary Engine: Gemini Vision (if configured)
+    if is_valid_gemini_key():
+        try:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(extract_text_with_gemini_vision, image_bytes)
+                gemini_text = future.result(timeout=10.0)
+
+            if gemini_text and gemini_text.strip():
+                elapsed = round(time.time() - t0, 2)
+                print(f"[OCR SUCCESS] Engine: Gemini Vision | File: {filename} | Extracted: {len(gemini_text)} chars in {elapsed}s")
+                return gemini_text.strip(), "GeminiVision"
+            else:
+                print(f"[OCR NOTICE] Gemini Vision returned empty for '{filename}'. Switching to EasyOCR...")
+        except Exception as e:
+            print(f"[OCR NOTICE] Gemini Vision notice: {e}. Switching to EasyOCR...")
+
+    # 2. Local Neural Engine: EasyOCR with 20-second timeout guard
     try:
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(extract_text_with_easyocr, image_bytes)
@@ -489,7 +588,7 @@ def extract_text_with_priority_pipeline(image_bytes: bytes, filename: str = "ima
     except Exception as e:
         print(f"[OCR NOTICE] EasyOCR encountered error: {e}. Switching to Tesseract fallback...")
 
-    # 2. Fallback Engine: Tesseract OCR with 6-second timeout
+    # 3. Fallback Engine: Tesseract OCR with 6-second timeout
     if pytesseract is not None:
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
@@ -503,7 +602,7 @@ def extract_text_with_priority_pipeline(image_bytes: bytes, filename: str = "ima
         except Exception as e:
             print(f"[OCR NOTICE] Tesseract fallback failed: {e}")
 
-    # 3. Graceful Failure Message
+    # 4. Graceful Failure Message
     print(f"[OCR FAILED] Could not extract text for '{filename}'. Returning fallback message.")
     return "Text extraction failed. Please try a clearer image or enter the answer manually.", "None"
 
@@ -541,6 +640,23 @@ def extract_text_from_file(absolute_file_path: str) -> str:
         except Exception as e:
             logger.error(f"Failed processing PDF '{filename}': {e}")
             return "Text extraction failed. Please try a clearer image or enter the answer manually."
+
+    elif ext in [".docx", ".doc"]:
+        try:
+            import docx
+            doc = docx.Document(absolute_file_path)
+            paragraphs_text = [p.text for p in doc.paragraphs if p.text.strip()]
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
+                    if row_text:
+                        paragraphs_text.append(row_text)
+            if paragraphs_text:
+                return "\n\n".join(paragraphs_text)
+            return "No text content found in the Word document."
+        except Exception as e:
+            logger.error(f"Failed extracting text from DOCX '{filename}': {e}")
+            return f"Failed to extract text from Word document: {e}"
 
     elif ext in [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"]:
         try:

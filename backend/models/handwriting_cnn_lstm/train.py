@@ -78,11 +78,13 @@ def collate_fn_ctc(batch):
     targets = torch.cat(labels, dim=0)
     return batch_imgs, targets, target_lengths, texts
 
+from typing import Optional
+
 def train_crnn_model(
     epochs: int = 25,
     batch_size: int = 16,
     lr: float = 0.003,
-    saved_model_path: str = None,
+    saved_model_path: Optional[str] = None,
 ):
     if saved_model_path is None:
         saved_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_model")

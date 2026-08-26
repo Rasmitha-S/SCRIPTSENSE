@@ -43,7 +43,7 @@ def main():
     
     print(f"Raw EasyOCR took {round(t1-t0, 2)}s. Results:")
     for bbox, text, conf in results:
-        print(f"  - '{text}' (conf: {round(conf, 2)})")
+        print(f"  - '{text}' (conf: {round(float(conf), 2)})")
 
 if __name__ == "__main__":
     main()

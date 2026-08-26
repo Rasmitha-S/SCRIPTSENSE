@@ -3,12 +3,17 @@ import shutil
 from typing import Tuple, Any
 from fastapi import HTTPException
 
-ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".docx", ".doc", ".webp", ".bmp", ".tiff"}
 ALLOWED_MIME_TYPES = {
     "application/pdf",
     "image/jpeg",
     "image/jpg",
-    "image/png"
+    "image/png",
+    "image/webp",
+    "image/bmp",
+    "image/tiff",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
 }
 UPLOAD_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
 
@@ -27,7 +32,7 @@ def validate_and_save_file(file: Any, prefix_id: str = "") -> Tuple[str, str]:
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file format '{ext}'. Allowed formats: PDF, JPG, JPEG, PNG."
+            detail=f"Unsupported file format '{ext}'. Allowed formats: PDF, JPG, JPEG, PNG, DOCX."
         )
 
     # Sanitize and create distinct filename

@@ -18,13 +18,29 @@ async def upload_answer_sheet(
     student_id: Optional[int] = Form(None),
     student_name: Optional[str] = Form(None),
     roll_number: Optional[str] = Form(None),
+    test_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     """
     Uploads a student handwritten answer sheet (PDF, JPG, JPEG, PNG),
-    stores the file in uploads/, extracts text via OCR, and records it in SQLite linked to a Student (Section 6 & 9.3).
+    stores the file in uploads/, extracts text via OCR, and records it in SQLite linked to a Student and optional Test (Section 6 & 9.3).
     """
+    # Verify test ownership if test_id provided
+    test_obj = None
+    if test_id:
+        test_obj = db.query(models.Test).filter(models.Test.id == test_id).first()
+        if not test_obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Test with ID {test_id} not found."
+            )
+        if test_obj.teacher_id is not None and test_obj.teacher_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Cannot upload answer sheets for another teacher's test."
+            )
+
     # Resolve or create Student record with strict teacher isolation
     student = None
     if student_id:
@@ -86,12 +102,18 @@ async def upload_answer_sheet(
             db.commit()
             db.refresh(student)
 
+    # If test_id provided, ensure student is enrolled in this test
+    if test_obj and student and student not in test_obj.students:
+        test_obj.students.append(student)
+        db.commit()
+
     uploader = current_user.full_name or current_user.username
 
     # 1. Create preliminary database record to get unique answer_sheet_id
     answer_sheet = models.AnswerSheet(
         student_id=student.id,
         teacher_id=current_user.id,
+        test_id=test_id if test_obj else None,
         student_name=student.name,
         file_path="pending",
         extracted_text="Processing OCR...",
@@ -131,6 +153,8 @@ async def upload_answer_sheet(
         student_id=student.id if student else None,
         student_name=student.name if student else answer_sheet.student_name,
         roll_number=student.roll_number if student else None,
+        test_id=answer_sheet.test_id,
+        test_name=test_obj.test_name if test_obj else None,
         file_path=answer_sheet.file_path,
         filename=file.filename or os.path.basename(abs_path),
         extracted_text=answer_sheet.extracted_text,
@@ -181,4 +205,38 @@ def update_answer_sheet_transcript(
         file_path=answer_sheet.file_path,
         extracted_text=answer_sheet.extracted_text or "",
         uploaded_by=answer_sheet.uploaded_by,
+    )
+
+
+@router.post("/extract-text", response_model=schemas.ExtractTextResponse)
+async def extract_text_from_file_upload(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Extracts text from an uploaded image, PDF, or DOCX file.
+    - Images / PDFs: Runs through OCR pipeline (Gemini -> EasyOCR -> Tesseract fallback).
+    - DOCX / DOC: Directly extracts paragraphs and tables via python-docx without OCR.
+    Returns the extracted text for safety-net review and manual correction.
+    """
+    import time
+    unique_prefix = f"extract_{int(time.time()*1000)}"
+    try:
+        relative_path, abs_path = validate_and_save_file(file, prefix_id=unique_prefix)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to process uploaded file: {str(e)}"
+        )
+
+    extracted_text = extract_text_from_file(abs_path)
+    filename = file.filename or os.path.basename(abs_path)
+    _, ext = os.path.splitext(filename)
+    file_type = ext.lower().replace(".", "") or "file"
+
+    return schemas.ExtractTextResponse(
+        filename=filename,
+        extracted_text=extracted_text,
+        file_type=file_type,
+        status="success"
     )

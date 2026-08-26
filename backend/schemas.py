@@ -311,6 +311,8 @@ class UploadResponse(AppBaseModel):
     student_id: Optional[int] = None
     student_name: Optional[str] = None
     roll_number: Optional[str] = None
+    test_id: Optional[int] = None
+    test_name: Optional[str] = None
     file_path: str
     filename: Optional[str] = None
     extracted_text: str
@@ -322,6 +324,7 @@ class UploadResponse(AppBaseModel):
 
 # Model Answer Schemas
 class ModelAnswerCreate(AppBaseModel):
+    test_id: Optional[int] = None
     question: Optional[str] = None
     answer_text: Optional[str] = None
     max_marks: float = Field(default=10.0, gt=0, le=500)
@@ -332,6 +335,7 @@ class ModelAnswerCreate(AppBaseModel):
 
 class ModelAnswerResponse(AppBaseModel):
     model_answer_id: int
+    test_id: Optional[int] = None
     title: Optional[str] = None
     subject: Optional[str] = None
     max_marks: Optional[float] = 10.0
@@ -341,12 +345,15 @@ class ModelAnswerResponse(AppBaseModel):
 # Evaluation Schemas
 class EvaluateRequest(AppBaseModel):
     answer_sheet_id: int
-    model_answer_id: int
+    model_answer_id: Optional[int] = None
+    test_id: Optional[int] = None
 
 class EvaluateResponse(AppBaseModel):
     evaluation_id: int
     answer_sheet_id: Optional[int] = None
     model_answer_id: Optional[int] = None
+    test_id: Optional[int] = None
+    test_name: Optional[str] = None
     student_id: Optional[int] = None
     student_name: Optional[str] = None
     roll_number: Optional[str] = None
@@ -364,6 +371,8 @@ class EvaluateResponse(AppBaseModel):
 class ResultResponse(AppBaseModel):
     evaluation_id: int
     answer_sheet_id: int
+    test_id: Optional[int] = None
+    test_name: Optional[str] = None
     student_id: Optional[int] = None
     student_name: Optional[str] = None
     roll_number: Optional[str] = None
@@ -408,8 +417,9 @@ class ResultUpdateResponse(AppBaseModel):
 
 # Batch Evaluation & Transcript Schemas
 class BatchEvaluateRequest(AppBaseModel):
-    answer_sheet_ids: List[int]
-    model_answer_id: int
+    answer_sheet_ids: Optional[List[int]] = None
+    model_answer_id: Optional[int] = None
+    test_id: Optional[int] = None
 
 class BatchEvaluateResponse(AppBaseModel):
     processed_count: int
@@ -418,3 +428,85 @@ class BatchEvaluateResponse(AppBaseModel):
 
 class TranscriptUpdateRequest(AppBaseModel):
     extracted_text: str
+
+class ExtractTextResponse(AppBaseModel):
+    filename: str
+    extracted_text: str
+    file_type: str = "document"
+    status: str = "success"
+
+
+# ==========================================
+# Test Schemas (Section 2 & 9.4 Test Workflow)
+# ==========================================
+class TestCreateRequest(AppBaseModel):
+    test_name: str
+    subject: Optional[str] = "General"
+    max_marks: Optional[float] = 10.0
+    question: Optional[str] = None
+    answer_text: Optional[str] = None
+    questions: Optional[List[QuestionItemSchema]] = None
+    rubric: Optional[List[RubricCriterionSchema]] = None
+    student_ids: Optional[List[int]] = None
+    new_students: Optional[List[StudentCreate]] = None
+
+class TestUpdateRequest(AppBaseModel):
+    test_name: Optional[str] = None
+    subject: Optional[str] = None
+    max_marks: Optional[float] = None
+    questions: Optional[List[QuestionItemSchema]] = None
+    student_ids: Optional[List[int]] = None
+
+class TestStudentAssignRequest(AppBaseModel):
+    student_ids: Optional[List[int]] = []
+    new_students: Optional[List[StudentCreate]] = []
+
+class TestStudentStatusSchema(AppBaseModel):
+    student_id: int
+    student_name: str
+    roll_number: Optional[str] = None
+    answer_sheet_id: Optional[int] = None
+    evaluation_id: Optional[int] = None
+    status: str = "Pending Upload"  # 'Pending Upload' | 'Uploaded' | 'Evaluated' | 'Verified'
+    similarity: Optional[float] = None
+    suggested_marks: Optional[float] = None
+    final_marks: Optional[float] = None
+    max_marks: float = 10.0
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    uploaded_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
+class TestResponse(AppBaseModel):
+    id: int
+    test_name: str
+    teacher_id: Optional[int] = None
+    subject: Optional[str] = "General"
+    max_marks: float = 10.0
+    created_at: Optional[datetime] = None
+    questions_count: int = 1
+    students_count: int = 0
+    model_answer_id: Optional[int] = None
+    students: Optional[List[StudentResponse]] = None
+    questions: Optional[List[QuestionItemSchema]] = None
+
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
+class TestOverviewResponse(AppBaseModel):
+    id: int
+    test_name: str
+    teacher_id: Optional[int] = None
+    subject: Optional[str] = "General"
+    max_marks: float = 10.0
+    created_at: Optional[datetime] = None
+    model_answer_id: Optional[int] = None
+    questions_count: int = 1
+    students_count: int = 0
+    uploaded_count: int = 0
+    evaluated_count: int = 0
+    verified_count: int = 0
+    students: List[TestStudentStatusSchema] = []
+
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+

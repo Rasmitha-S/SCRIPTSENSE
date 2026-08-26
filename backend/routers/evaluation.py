@@ -65,7 +65,7 @@ async def create_model_answer(
         questions_data: list = []
         if raw_questions:
             try:
-                parsed_q = json.loads(str(raw_questions)) if isinstance(raw_questions, (str, bytes, bytearray)) else raw_questions
+                parsed_q = json.loads(raw_questions) if isinstance(raw_questions, (str, bytes, bytearray)) else raw_questions
                 if isinstance(parsed_q, list):
                     questions_data = parsed_q
                 questions_json_str = json.dumps(questions_data) if questions_data else None
@@ -76,7 +76,7 @@ async def create_model_answer(
         rubric_json_str = None
         if raw_rubric:
             try:
-                parsed_r = json.loads(str(raw_rubric)) if isinstance(raw_rubric, (str, bytes, bytearray)) else raw_rubric
+                parsed_r = json.loads(raw_rubric) if isinstance(raw_rubric, (str, bytes, bytearray)) else raw_rubric
                 rubric_json_str = json.dumps(parsed_r) if parsed_r else None
             except Exception:
                 rubric_json_str = None
@@ -284,6 +284,7 @@ def evaluate_answer_sheet(
 ):
     """
     Executes AI semantic evaluation comparing extracted OCR text against reference model answer and step-wise rubrics.
+    Automatically resolves the model answer from the linked Test if model_answer_id is omitted.
     Enforces teacher-student ownership check.
     """
     answer_sheet = db.query(models.AnswerSheet).filter(models.AnswerSheet.id == request.answer_sheet_id).first()
@@ -300,11 +301,26 @@ def evaluate_answer_sheet(
             detail="Access denied: You cannot evaluate another teacher's student's answer sheet."
         )
 
-    model_answer = db.query(models.ModelAnswer).filter(models.ModelAnswer.id == request.model_answer_id).first()
+    model_answer = None
+    if request.model_answer_id:
+        model_answer = db.query(models.ModelAnswer).filter(models.ModelAnswer.id == request.model_answer_id).first()
+    elif request.test_id:
+        test_obj = db.query(models.Test).filter(models.Test.id == request.test_id).first()
+        if test_obj and test_obj.model_answers:
+            model_answer = test_obj.model_answers[0]
+    elif answer_sheet.test_id:
+        test_obj = db.query(models.Test).filter(models.Test.id == answer_sheet.test_id).first()
+        if test_obj and test_obj.model_answers:
+            model_answer = test_obj.model_answers[0]
+
+    if not model_answer:
+        # Fallback to latest model answer in database if single question evaluation
+        model_answer = db.query(models.ModelAnswer).order_by(models.ModelAnswer.id.desc()).first()
+
     if not model_answer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Model answer with ID {request.model_answer_id} not found."
+            detail="No reference model answer found for evaluation."
         )
 
     student_text = answer_sheet.extracted_text or ""
@@ -357,14 +373,19 @@ def evaluate_answer_sheet(
     parsed_rubric_scores = [schemas.RubricScoreSchema(**r) for r in rubric_scores] if rubric_scores else None
     parsed_q_evals = [schemas.QuestionEvaluationSchema(**q) for q in question_evaluations] if question_evaluations else None
 
+    test_id_val = answer_sheet.test_id or model_answer.test_id or request.test_id
+    test_name_val = answer_sheet.test.test_name if answer_sheet.test else (model_answer.test.test_name if model_answer.test else model_answer.title)
+
     return schemas.EvaluateResponse(
         evaluation_id=evaluation.id,
         answer_sheet_id=answer_sheet.id,
         model_answer_id=model_answer.id,
+        test_id=test_id_val,
+        test_name=test_name_val,
         student_id=answer_sheet.student_id,
         student_name=student_name_val,
         roll_number=roll_number_val,
-        title=model_answer.title,
+        title=model_answer.title or test_name_val,
         similarity=evaluation.similarity,
         suggested_marks=evaluation.suggested_marks,
         max_marks=model_answer.max_marks,
@@ -380,13 +401,34 @@ def batch_evaluate_answer_sheets(
     current_user: models.User = Depends(get_current_user),
 ):
     """
-    Evaluates multiple answer sheets in one batch against a designated model answer / exam paper.
+    Evaluates multiple answer sheets in one batch against a designated model answer or Test.
+    If test_id is provided, automatically uses the test's model answer.
     """
-    model_answer = db.query(models.ModelAnswer).filter(models.ModelAnswer.id == request.model_answer_id).first()
+    model_answer = None
+    if request.model_answer_id:
+        model_answer = db.query(models.ModelAnswer).filter(models.ModelAnswer.id == request.model_answer_id).first()
+    elif request.test_id:
+        test_obj = db.query(models.Test).filter(models.Test.id == request.test_id).first()
+        if test_obj and test_obj.model_answers:
+            model_answer = test_obj.model_answers[0]
+
     if not model_answer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Model answer with ID {request.model_answer_id} not found."
+            detail="Model answer or Test not found."
+        )
+
+    # If answer_sheet_ids not provided, but test_id provided, fetch all sheets for this test
+    sheet_ids_to_evaluate = request.answer_sheet_ids
+    if (not sheet_ids_to_evaluate or len(sheet_ids_to_evaluate) == 0) and request.test_id:
+        sheets_for_test = db.query(models.AnswerSheet).filter(models.AnswerSheet.test_id == request.test_id).all()
+        sheet_ids_to_evaluate = [s.id for s in sheets_for_test]
+
+    if not sheet_ids_to_evaluate:
+        return schemas.BatchEvaluateResponse(
+            processed_count=0,
+            successful_evaluations=[],
+            failed_ids=[]
         )
 
     successful = []
@@ -406,7 +448,7 @@ def batch_evaluate_answer_sheets(
         except Exception:
             rubric_list = None
 
-    for sheet_id in request.answer_sheet_ids:
+    for sheet_id in sheet_ids_to_evaluate:
         answer_sheet = db.query(models.AnswerSheet).filter(models.AnswerSheet.id == sheet_id).first()
         if not answer_sheet:
             failed.append(sheet_id)
@@ -456,15 +498,20 @@ def batch_evaluate_answer_sheets(
             parsed_rubric_scores = [schemas.RubricScoreSchema(**r) for r in rubric_scores] if rubric_scores else None
             parsed_q_evals = [schemas.QuestionEvaluationSchema(**q) for q in question_evaluations] if question_evaluations else None
 
+            test_id_val = answer_sheet.test_id or model_answer.test_id or request.test_id
+            test_name_val = answer_sheet.test.test_name if answer_sheet.test else (model_answer.test.test_name if model_answer.test else model_answer.title)
+
             successful.append(
                 schemas.EvaluateResponse(
                     evaluation_id=evaluation.id,
                     answer_sheet_id=answer_sheet.id,
                     model_answer_id=model_answer.id,
+                    test_id=test_id_val,
+                    test_name=test_name_val,
                     student_id=answer_sheet.student_id,
                     student_name=student_name_val,
                     roll_number=roll_number_val,
-                    title=model_answer.title,
+                    title=model_answer.title or test_name_val,
                     similarity=evaluation.similarity,
                     suggested_marks=evaluation.suggested_marks,
                     max_marks=model_answer.max_marks,

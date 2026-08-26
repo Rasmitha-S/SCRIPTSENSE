@@ -45,7 +45,7 @@ if os.path.exists(img_path):
         slope_ths=0.2,
         width_ths=0.7
     )
-    raw_ocr = "\n".join(res2)
+    raw_ocr = "\n".join([str(r) for r in res2])
     repaired_ocr = repair_ocr_text(raw_ocr)
     t1 = time.time()
     print(f"Time: {round(t1-t0, 2)}s")

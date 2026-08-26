@@ -106,3 +106,32 @@ def format_line_for_crnn(
     patch[start_y:start_y+new_h, start_x:start_x+new_w] = resized.astype(np.float32) / 255.0
 
     return patch
+
+
+def normalize_character_patch(
+    canvas: np.ndarray,
+    target_size: Tuple[int, int] = (28, 28)
+) -> np.ndarray:
+    """Standardizes a 2D character canvas into normalized target_size float32 array in [0.0, 1.0]."""
+    if canvas.size == 0 or np.sum(canvas) == 0:
+        return np.zeros(target_size, dtype=np.float32)
+    non_zeros = np.argwhere(canvas > 20)
+    if non_zeros.size > 0:
+        y_min, x_min = non_zeros.min(axis=0)
+        y_max, x_max = non_zeros.max(axis=0) + 1
+        crop = canvas[y_min:y_max, x_min:x_max]
+    else:
+        crop = canvas
+    ch, cw = crop.shape[:2]
+    tw, th = target_size
+    if ch == 0 or cw == 0:
+        return np.zeros(target_size, dtype=np.float32)
+    scale = float(min(tw, th) - 8) / max(ch, cw, 1)
+    new_w = max(1, int(round(cw * scale)))
+    new_h = max(1, int(round(ch * scale)))
+    resized = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    patch = np.zeros(target_size, dtype=np.float32)
+    sy = (th - new_h) // 2
+    sx = (tw - new_w) // 2
+    patch[sy:sy+new_h, sx:sx+new_w] = resized.astype(np.float32) / 255.0
+    return patch

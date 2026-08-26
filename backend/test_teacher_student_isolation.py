@@ -50,15 +50,15 @@ def test_teacher_student_isolation():
     headers_t2 = {"Authorization": f"Bearer {token_t2}"}
     print("[1] Logged in as Teacher 2 (Prof. David Johnson).")
 
-    # 2. Check Teacher 1 students (should contain migrated students like Sanjay, madhu)
+    # 2. Check Teacher 1 students
     res_t1_students = api_get(f"{BASE_URL}/api/students", headers=headers_t1)
     assert res_t1_students.status_code == 200
     t1_students = res_t1_students.json()
     print(f"\n[2] Teacher 1 student count: {len(t1_students)}")
-    assert len(t1_students) > 0, "Teacher 1 should have migrated students"
+    assert len(t1_students) > 0, "Teacher 1 should have students"
     t1_names = [s["name"] for s in t1_students]
+    t1_ids = [s["id"] for s in t1_students]
     print(f"    - Teacher 1 Students: {', '.join(t1_names)}")
-    assert "madhu" in t1_names or "Sanjay" in t1_names
 
     # 3. Check Teacher 2 students (must NOT see Teacher 1's students)
     res_t2_students = api_get(f"{BASE_URL}/api/students", headers=headers_t2)
@@ -68,7 +68,7 @@ def test_teacher_student_isolation():
     t2_names = [s["name"] for s in t2_students]
     print(f"    - Teacher 2 Students: {', '.join(t2_names) if t2_names else '(Empty List)'}")
     for st in t2_students:
-        assert st["name"] not in ["madhu", "Sanjay"], f"Teacher 2 should not see Teacher 1 student {st['name']}"
+        assert st["id"] not in t1_ids, f"Teacher 2 should not see Teacher 1 student ID #{st['id']} ({st['name']})"
 
     # 4. Test Per-Teacher Roll Number Uniqueness
     shared_roll = "ROLL-TEST-101"

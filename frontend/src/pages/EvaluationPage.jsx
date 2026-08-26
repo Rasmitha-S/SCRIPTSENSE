@@ -185,7 +185,8 @@ export const EvaluationPage = () => {
       const data = await evaluateAnswerApi(
         {
           answer_sheet_id: workflowData.answerSheetId,
-          model_answer_id: workflowData.modelAnswerId,
+          model_answer_id: workflowData.modelAnswerId || undefined,
+          test_id: workflowData.testId || undefined,
         },
         token
       );
@@ -194,6 +195,8 @@ export const EvaluationPage = () => {
 
       updateWorkflow({
         evaluationId: data.evaluation_id,
+        testId: data.test_id || workflowData.testId,
+        testName: data.test_name || workflowData.testName,
         similarity: data.similarity,
         suggestedMarks: data.suggested_marks,
         maxMarks: data.max_marks || workflowData.maxMarks,
@@ -214,20 +217,26 @@ export const EvaluationPage = () => {
   };
 
   const handleRunBatchEvaluation = async () => {
-    if (!workflowData.modelAnswerId || selectedBatchSheetIds.length === 0) {
-      setError('Please select a Model Answer and at least 1 answer sheet for batch evaluation.');
+    if ((!workflowData.modelAnswerId && !workflowData.testId) || selectedBatchSheetIds.length === 0) {
+      setError('Please select a Test or Model Answer and at least 1 answer sheet for batch evaluation.');
       return;
     }
 
     setError('');
     setEvaluating(true);
+    setEvalStep(0);
     setBatchResults(null);
+
+    const stepInterval = setInterval(() => {
+      setEvalStep((prev) => (prev < 3 ? prev + 1 : prev));
+    }, 450);
 
     try {
       const res = await batchEvaluateApi(
         {
           answer_sheet_ids: selectedBatchSheetIds,
-          model_answer_id: workflowData.modelAnswerId,
+          model_answer_id: workflowData.modelAnswerId || undefined,
+          test_id: workflowData.testId || undefined,
         },
         token
       );

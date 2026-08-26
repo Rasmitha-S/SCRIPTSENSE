@@ -159,7 +159,7 @@ export const explainMarksApi = async (explainData) => {
 };
 
 // 2. Upload Answer Sheet Endpoint (POST /api/upload)
-export const uploadAnswerSheetApi = async (file, studentName, rollNumber, studentId, token) => {
+export const uploadAnswerSheetApi = async (file, studentName, rollNumber, studentId, token, testId = null) => {
   const formData = new FormData();
   formData.append('file', file);
   if (studentName) {
@@ -170,6 +170,9 @@ export const uploadAnswerSheetApi = async (file, studentName, rollNumber, studen
   }
   if (studentId) {
     formData.append('student_id', studentId);
+  }
+  if (testId) {
+    formData.append('test_id', testId);
   }
 
   const response = await apiClient.post('/api/upload', formData, {
@@ -241,6 +244,22 @@ export const createModelAnswerApi = async (modelData, token) => {
   return response.data;
 };
 
+// 3.1 Extract Text from Model Answer / Document (POST /api/extract-text)
+export const extractTextApi = async (file, token) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post('/api/extract-text', formData, {
+    timeout: 60000,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  return response.data;
+};
+
+export const extractModelAnswerApi = extractTextApi;
+
 // 4. List Model Answers (GET /api/model-answers)
 export const getModelAnswersApi = async (token) => {
   const response = await apiClient.get('/api/model-answers', {
@@ -306,4 +325,57 @@ export const saveFinalResultApi = async (evaluationId, payload, token) => {
   return response.data;
 };
 
+// ==========================================
+// 10. Test Management APIs
+// ==========================================
+export const createTestApi = async (testData, token) => {
+  const response = await apiClient.post('/api/tests', testData, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return response.data;
+};
+
+export const getTestsApi = async (token) => {
+  const response = await apiClient.get('/api/tests', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return response.data;
+};
+
+export const getTestDetailsApi = async (testId, token) => {
+  const response = await apiClient.get(`/api/tests/${testId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return response.data;
+};
+
+export const getTestsOverviewApi = async (token) => {
+  const response = await apiClient.get('/api/tests/overview', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return response.data;
+};
+
+export const assignStudentsToTestApi = async (testId, payload, token) => {
+  const response = await apiClient.post(`/api/tests/${testId}/students`, payload, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return response.data;
+};
+
+export const evaluateAllTestSheetsApi = async (testId, token) => {
+  const response = await apiClient.post(`/api/tests/${testId}/evaluate-all`, {}, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return response.data;
+};
+
+export const deleteTestApi = async (testId, token) => {
+  const response = await apiClient.delete(`/api/tests/${testId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return response.data;
+};
+
 export default apiClient;
+

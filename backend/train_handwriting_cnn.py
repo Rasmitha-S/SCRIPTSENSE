@@ -8,7 +8,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from services.handwriting_service import HandwritingCNN, CHARACTERS, NUM_CLASSES
+from models.handwriting_cnn.model import HandwritingCNN, CHARACTERS, NUM_CLASSES
 
 def render_char_28x28(char: str, font_face: int, font_scale: float, thickness: int, angle: float = 0.0) -> np.ndarray:
     """Renders a character directly to 28x28 normalized patch in OpenCV."""

@@ -76,3 +76,13 @@ def detect_and_extract_text_lines(
             line_results.append((BoundingBox(box.x, pad_y1, box.w, pad_y2 - pad_y1), line_patch))
 
     return line_results
+
+
+def segment_handwriting_document(binary_img: np.ndarray) -> List[Tuple[BoundingBox, np.ndarray]]:
+    """Alias for detect_and_extract_text_lines."""
+    return detect_and_extract_text_lines(binary_img)
+
+
+def segment_lines_and_characters(binary_img: np.ndarray) -> List[Tuple[BoundingBox, np.ndarray]]:
+    """Segments document lines and active handwriting regions."""
+    return detect_and_extract_text_lines(binary_img)

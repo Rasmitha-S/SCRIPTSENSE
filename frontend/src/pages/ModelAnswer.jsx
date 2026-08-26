@@ -47,61 +47,23 @@ export const ModelAnswer = () => {
   const [lastExtractedText, setLastExtractedText] = useState(workflowData.modelAnswerText || '');
 
   // Single question fields
-  const [question, setQuestion] = useState(
-    workflowData.question || "Explain Newton's second law of motion and state its mathematical expression."
-  );
-  const [modelAnswerText, setModelAnswerText] = useState(
-    workflowData.modelAnswerText ||
-      "Newton's second law of motion states that the rate of change of momentum of an object is directly proportional to the applied unbalanced force in the direction of the force. Mathematically: F = m * a (Force = mass x acceleration), where Force is in Newtons (N), mass in kg, and acceleration in m/s^2."
-  );
+  const [question, setQuestion] = useState(workflowData.question || '');
+  const [modelAnswerText, setModelAnswerText] = useState(workflowData.modelAnswerText || '');
   const [maxMarks, setMaxMarks] = useState(workflowData.maxMarks || 10);
 
   // Multi-question Exam fields
-  const [examTitle, setExamTitle] = useState(workflowData.examTitle || 'Midterm Examination');
-  const [examSubject, setExamSubject] = useState(workflowData.examSubject || 'Physics');
+  const [examTitle, setExamTitle] = useState(workflowData.examTitle || '');
+  const [examSubject, setExamSubject] = useState(workflowData.examSubject || '');
   const [questions, setQuestions] = useState(
     workflowData.questions && workflowData.questions.length > 0
       ? workflowData.questions
       : [
           {
             q_num: 1,
-            question: "State Newton's second law of motion and write its mathematical formula.",
-            model_answer: "Newton's second law of motion states that the acceleration of an object is directly proportional to the net force acting upon it and inversely proportional to its mass. Mathematically, F = m * a where F is force in Newtons, m is mass in kg, and a is acceleration in m/s^2.",
-            max_marks: 8.0,
-            rubric: [
-              {
-                id: "q1_r1",
-                criterion: "Definition of Law (Force proportional to rate of change of momentum / mass & acceleration)",
-                max_marks: 4.0,
-                keywords: ["force", "acceleration", "proportional", "mass"]
-              },
-              {
-                id: "q1_r2",
-                criterion: "Mathematical Formula (F = m * a) with correct standard units (N, kg, m/s^2)",
-                max_marks: 4.0,
-                keywords: ["f = m * a", "newtons", "kg", "formula"]
-              }
-            ]
-          },
-          {
-            q_num: 2,
-            question: "Define the Work-Energy Theorem and provide a practical real-world example.",
-            model_answer: "The Work-Energy Theorem states that the net work done by all forces acting on a particle equals the change in its kinetic energy (W_net = Delta KE). For example, when brakes are applied to a moving car, the negative work done by friction dissipates its kinetic energy to zero, bringing it to a stop.",
-            max_marks: 7.0,
-            rubric: [
-              {
-                id: "q2_r1",
-                criterion: "Statement & Definition of Work-Energy Theorem (W_net = Delta KE)",
-                max_marks: 4.0,
-                keywords: ["work", "kinetic energy", "forces", "change"]
-              },
-              {
-                id: "q2_r2",
-                criterion: "Valid real-world application/example (e.g. car braking or object falling)",
-                max_marks: 3.0,
-                keywords: ["car", "brakes", "friction", "stopping"]
-              }
-            ]
+            question: '',
+            model_answer: '',
+            max_marks: 5.0,
+            rubric: []
           }
         ]
   );
@@ -110,181 +72,6 @@ export const ModelAnswer = () => {
   const [saveSuccess, setSaveSuccess] = useState(Boolean(workflowData.modelAnswerId));
   const [error, setError] = useState('');
 
-  const sampleTemplates = [
-    {
-      id: 'physics_2q_7m',
-      label: 'Physics Paper: 2 Questions (2 Marks + 5 Marks = 7 Total)',
-      subject: 'Physics',
-      icon: Atom,
-      mode: 'multi',
-      title: 'Physics Short Paper: Newton Law & Work-Energy (7 Marks)',
-      questions: [
-        {
-          q_num: 1,
-          question: "State Newton's second law of motion and write its mathematical formula.",
-          model_answer: "Newton's second law states that the rate of change of momentum is directly proportional to applied force. Formula: F = m * a (Force = mass x acceleration), measured in Newtons.",
-          max_marks: 2.0,
-          rubric: [
-            {
-              id: "q1_r1",
-              criterion: "Core definition and formula (F = m * a)",
-              max_marks: 2.0,
-              keywords: ["force", "mass", "acceleration", "proportional", "f = m * a"]
-            }
-          ]
-        },
-        {
-          q_num: 2,
-          question: "Define the Work-Energy Theorem, provide its formula, and explain a practical real-world example.",
-          model_answer: "The Work-Energy Theorem states that the net work done by forces on an object equals the change in its kinetic energy (W_net = Delta KE). For example, when car brakes are applied, friction does work to reduce kinetic energy to zero, bringing the car to rest.",
-          max_marks: 5.0,
-          rubric: [
-            {
-              id: "q2_r1",
-              criterion: "Definition and formula (W_net = Delta KE)",
-              max_marks: 2.5,
-              keywords: ["work", "kinetic energy", "forces", "change", "delta"]
-            },
-            {
-              id: "q2_r2",
-              criterion: "Practical real-world application (car braking or falling object)",
-              max_marks: 2.5,
-              keywords: ["car", "brakes", "friction", "stopping", "example"]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'physics_multi',
-      label: 'Physics: Mechanics & Energy (8M + 7M = 15 Total)',
-      subject: 'Physics',
-      icon: Atom,
-      mode: 'multi',
-      title: 'Physics 101: Mechanics & Work-Energy Midterm',
-      questions: [
-        {
-          q_num: 1,
-          question: "State Newton's second law of motion and write its mathematical formula.",
-          model_answer: "Newton's second law of motion states that the acceleration of an object is directly proportional to the net force acting upon it and inversely proportional to its mass. Mathematically, F = m * a where F is force in Newtons, m is mass in kg, and a is acceleration in m/s^2.",
-          max_marks: 8.0,
-          rubric: [
-            {
-              id: "p1",
-              criterion: "Definition of Law (Force proportional to rate of change of momentum / mass & acceleration)",
-              max_marks: 4.0,
-              keywords: ["force", "acceleration", "proportional", "mass"]
-            },
-            {
-              id: "p2",
-              criterion: "Mathematical Formula (F = m * a) with correct standard units (N, kg, m/s^2)",
-              max_marks: 4.0,
-              keywords: ["f = m * a", "newtons", "kg", "formula"]
-            }
-          ]
-        },
-        {
-          q_num: 2,
-          question: "Define the Work-Energy Theorem and provide a practical real-world example.",
-          model_answer: "The Work-Energy Theorem states that the net work done by all forces acting on a particle equals the change in its kinetic energy (W_net = Delta KE). For example, when brakes are applied to a moving car, the negative work done by friction dissipates its kinetic energy to zero, bringing it to a stop.",
-          max_marks: 7.0,
-          rubric: [
-            {
-              id: "p3",
-              criterion: "Statement & Definition of Work-Energy Theorem (W_net = Delta KE)",
-              max_marks: 4.0,
-              keywords: ["work", "kinetic energy", "forces", "change"]
-            },
-            {
-              id: "p4",
-              criterion: "Valid real-world application/example (e.g. car braking or object falling)",
-              max_marks: 3.0,
-              keywords: ["car", "brakes", "friction", "stopping"]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'cs_multi',
-      label: 'CS: OOP & Memory Management (2 Questions)',
-      subject: 'Computer Science',
-      icon: Binary,
-      mode: 'multi',
-      title: 'CS201: Object-Oriented Programming & Systems',
-      questions: [
-        {
-          q_num: 1,
-          question: "Explain the difference between compile-time polymorphism and runtime polymorphism with examples.",
-          model_answer: "Compile-time polymorphism (static binding) is resolved during compilation via method overloading or operator overloading. Runtime polymorphism (dynamic binding) is resolved at runtime via method overriding through inheritance and virtual functions.",
-          max_marks: 8.0,
-          rubric: [
-            {
-              id: "cs1",
-              criterion: "Clear distinction between compile-time vs runtime binding",
-              max_marks: 4.0,
-              keywords: ["compile-time", "runtime", "overloading", "overriding"]
-            },
-            {
-              id: "cs2",
-              criterion: "Code/Conceptual examples of inheritance & virtual methods",
-              max_marks: 4.0,
-              keywords: ["inheritance", "virtual", "method", "signature"]
-            }
-          ]
-        },
-        {
-          q_num: 2,
-          question: "What is a memory leak in C++ and how can smart pointers help prevent it?",
-          model_answer: "A memory leak occurs when dynamically allocated memory on the heap (via new) is not freed when no longer needed. Smart pointers like std::unique_ptr and std::shared_ptr provide RAII-based automatic lifetime management, calling delete automatically when going out of scope.",
-          max_marks: 7.0,
-          rubric: [
-            {
-              id: "cs3",
-              criterion: "Accurate definition of heap allocation and unfreed memory",
-              max_marks: 3.5,
-              keywords: ["heap", "dynamically", "allocated", "freed", "delete"]
-            },
-            {
-              id: "cs4",
-              criterion: "Explanation of smart pointers (unique_ptr, shared_ptr) and RAII",
-              max_marks: 3.5,
-              keywords: ["smart pointer", "unique_ptr", "shared_ptr", "raii", "scope"]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'single_os',
-      label: 'Single Q: Deadlock Coffman Conditions',
-      subject: 'Operating Systems',
-      icon: FileCode,
-      mode: 'single',
-      question: "List and briefly explain the four Coffman conditions required for a deadlock to occur.",
-      answer: "The four Coffman conditions are: 1. Mutual Exclusion (at least one non-shareable resource), 2. Hold and Wait (process holds resource while requesting another), 3. No Preemption (resources cannot be forcibly confiscated), and 4. Circular Wait (a closed chain of processes each waiting for a resource held by the next).",
-      marks: 10.0
-    }
-  ];
-
-  const applyTemplate = (tmpl) => {
-    if (tmpl.mode === 'multi') {
-      setMode('multi');
-      setExamTitle(tmpl.title);
-      setExamSubject(tmpl.subject);
-      setQuestions(tmpl.questions);
-    } else {
-      setMode('single');
-      setQuestion(tmpl.question);
-      setModelAnswerText(tmpl.answer);
-      setMaxMarks(tmpl.marks);
-      setOverrideText('');
-      setPdfFile(null);
-    }
-    setError('');
-    setSaveSuccess(false);
-  };
-
   // Multi-Question Handlers
   const handleAddQuestion = () => {
     const nextQNum = questions.length + 1;
@@ -292,23 +79,10 @@ export const ModelAnswer = () => {
       ...questions,
       {
         q_num: nextQNum,
-        question: `Question ${nextQNum} prompt...`,
-        model_answer: "Enter reference model solution...",
+        question: '',
+        model_answer: '',
         max_marks: 5.0,
-        rubric: [
-          {
-            id: `q${nextQNum}_r1`,
-            criterion: "Core principle & conceptual definition",
-            max_marks: 3.0,
-            keywords: ["concept", "principle"]
-          },
-          {
-            id: `q${nextQNum}_r2`,
-            criterion: "Application, diagram, or formula accuracy",
-            max_marks: 2.0,
-            keywords: ["application", "formula"]
-          }
-        ]
+        rubric: []
       }
     ]);
   };
@@ -633,46 +407,6 @@ export const ModelAnswer = () => {
         </div>
       )}
 
-      {/* Preset Templates */}
-      <div className="glass-panel p-4 rounded-2xl border border-slate-800">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-            <span>Quick Templates (Single & Multi-Question + Rubrics)</span>
-          </span>
-          <span className="text-xs text-slate-500">Click to load into editor</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {sampleTemplates.map((tmpl) => {
-            const Icon = tmpl.icon;
-            return (
-              <button
-                key={tmpl.id}
-                type="button"
-                onClick={() => applyTemplate(tmpl)}
-                className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 text-left transition-all group"
-              >
-                <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400 flex-shrink-0 group-hover:bg-brand-500/20">
-                  <Icon className="w-4 h-4" />
-                </div>
-                <div className="overflow-hidden">
-                  <div className="text-xs font-semibold text-slate-200 truncate group-hover:text-brand-300">
-                    {tmpl.label}
-                  </div>
-                  <div className="text-[11px] text-slate-400 flex items-center space-x-1.5">
-                    <span>{tmpl.subject}</span>
-                    <span>•</span>
-                    <span className="text-brand-300">
-                      {tmpl.mode === 'multi' ? `${tmpl.questions.length} Qs` : `${tmpl.marks} M`}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Single Question Mode Form */}
       {mode === 'single' && (
         <form onSubmit={handleSave} className="space-y-6">
@@ -687,7 +421,7 @@ export const ModelAnswer = () => {
                 required
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="e.g. Explain Newton's second law of motion and state its mathematical expression..."
+                placeholder="Enter the question text..."
                 className="glass-input block w-full px-4 py-2.5 sm:text-sm rounded-xl"
               />
             </div>
@@ -764,7 +498,7 @@ export const ModelAnswer = () => {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".pdf,.png,.jpg,.jpeg"
+                      accept=".pdf,.png,.jpg,.jpeg,.docx,.doc,.webp"
                       onChange={handleFileChange}
                       className="hidden"
                     />
@@ -780,14 +514,14 @@ export const ModelAnswer = () => {
                               {pdfFile.name}
                             </p>
                             <p className="text-[11px] text-slate-400">
-                              {(pdfFile.size / 1024).toFixed(1)} KB • Ready for OCR extraction
+                              {(pdfFile.size / 1024).toFixed(1)} KB • Ready for text extraction
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center space-x-2">
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            Attached PDF
+                            Attached File
                           </span>
                           <button
                             type="button"
@@ -809,10 +543,10 @@ export const ModelAnswer = () => {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-white">
-                            Drag & drop model answer PDF here, or <span className="text-brand-400 hover:underline">Browse</span>
+                            Drag & drop model answer file here, or <span className="text-brand-400 hover:underline">Browse</span>
                           </p>
                           <p className="text-xs text-slate-400 mt-1">
-                            Supports PDF documents, PNG, JPG, or JPEG files (Max 20MB)
+                            Supports PDF documents, DOCX Word files, PNG, JPG, or JPEG images (Max 20MB)
                           </p>
                         </div>
                       </div>
@@ -824,7 +558,7 @@ export const ModelAnswer = () => {
                     <div className="flex items-start space-x-2 text-xs text-slate-300">
                       <Info className="w-4 h-4 text-brand-400 flex-shrink-0 mt-0.5" />
                       <span>
-                        <strong>OCR Processing:</strong> The backend will automatically extract text from your uploaded PDF using Tesseract OCR.
+                        <strong>Text Extraction:</strong> Images and PDFs run through the OCR pipeline; DOCX files are extracted directly.
                       </span>
                     </div>
                     <div>
@@ -920,7 +654,7 @@ export const ModelAnswer = () => {
                   required
                   value={examTitle}
                   onChange={(e) => setExamTitle(e.target.value)}
-                  placeholder="e.g. Physics Midterm Examination 2026"
+                  placeholder="Enter exam / paper title"
                   className="glass-input block w-full px-4 py-2.5 text-sm rounded-xl"
                 />
               </div>
@@ -933,7 +667,7 @@ export const ModelAnswer = () => {
                   type="text"
                   value={examSubject}
                   onChange={(e) => setExamSubject(e.target.value)}
-                  placeholder="e.g. Physics, CS, Bio"
+                  placeholder="Enter subject or course (optional)"
                   className="glass-input block w-full px-4 py-2.5 text-sm rounded-xl"
                 />
               </div>

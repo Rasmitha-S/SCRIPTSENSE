@@ -33,8 +33,8 @@ export const Login = () => {
   const [authMode, setAuthMode] = useState('signin');
   
   // Form Inputs
-  const [usernameOrEmail, setUsernameOrEmail] = useState('teacher1');
-  const [password, setPassword] = useState('secret123');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -187,15 +187,6 @@ export const Login = () => {
     }
   };
 
-  const selectPresetAccount = (presetRole, presetUser, presetPass) => {
-    setRole(presetRole);
-    setUsernameOrEmail(presetUser);
-    setPassword(presetPass);
-    setAuthMode('signin');
-    setError('');
-    setSuccessMsg('');
-  };
-
   const quickSelectStudent = (roll) => {
     setStudentRoll(roll);
     setError('');
@@ -329,55 +320,6 @@ export const Login = () => {
                 </div>
               </div>
 
-              {/* Quick Preset Accounts (Only in Sign In mode) */}
-              {authMode === 'signin' && (
-                <div className="space-y-2">
-                  <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider">
-                    Quick Switch Demo Accounts:
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => selectPresetAccount('teacher', 'teacher1', 'secret123')}
-                      className={`p-2 rounded-xl border text-left transition-all ${
-                        role === 'teacher' && usernameOrEmail === 'teacher1'
-                          ? 'bg-brand-950/60 border-brand-500/40 text-brand-300'
-                          : 'bg-slate-900/60 border-slate-800 hover:bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <div className="text-[11px] font-bold text-white truncate">Dr. Sarah</div>
-                      <div className="text-[9px] font-mono text-brand-400">Teacher 1</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => selectPresetAccount('teacher', 'teacher2', 'secret123')}
-                      className={`p-2 rounded-xl border text-left transition-all ${
-                        role === 'teacher' && usernameOrEmail === 'teacher2'
-                          ? 'bg-violet-950/60 border-violet-500/40 text-violet-300'
-                          : 'bg-slate-900/60 border-slate-800 hover:bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <div className="text-[11px] font-bold text-white truncate">Prof. David</div>
-                      <div className="text-[9px] font-mono text-violet-400">Teacher 2</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => selectPresetAccount('admin', 'admin', 'admin123')}
-                      className={`p-2 rounded-xl border text-left transition-all ${
-                        role === 'admin' && usernameOrEmail === 'admin'
-                          ? 'bg-amber-950/60 border-amber-500/40 text-amber-300'
-                          : 'bg-slate-900/60 border-slate-800 hover:bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <div className="text-[11px] font-bold text-white truncate">System Admin</div>
-                      <div className="text-[9px] font-mono text-amber-400">Admin</div>
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* 1. Main Sign In / Register Form */}
               {authMode !== 'forgot' ? (
                 <form onSubmit={handleAuth} className="space-y-4">
@@ -392,15 +334,7 @@ export const Login = () => {
                         <select
                           value={role}
                           onChange={(e) => {
-                            const newRole = e.target.value;
-                            setRole(newRole);
-                            if (newRole === 'admin') {
-                              setUsernameOrEmail('admin');
-                              setPassword('admin123');
-                            } else {
-                              setUsernameOrEmail('teacher1');
-                              setPassword('secret123');
-                            }
+                            setRole(e.target.value);
                             setError('');
                             setSuccessMsg('');
                           }}

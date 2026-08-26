@@ -139,3 +139,12 @@ def extract_handwritten_text_cnn(file_path_or_bytes: Union[str, bytes]) -> str:
 
     cleaned = clean_extracted_text(extracted_text)
     return cleaned
+
+
+from models.handwriting_cnn.model import HandwritingCNN
+from services.handwriting_segmentation import segment_lines_and_characters
+
+def get_cnn_engine():
+    """Returns initialized CRNN / CNN handwriting recognition engine."""
+    from models.handwriting_cnn_lstm.inference import load_crnn_model
+    return load_crnn_model()

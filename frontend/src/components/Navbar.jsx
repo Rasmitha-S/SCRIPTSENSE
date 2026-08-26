@@ -16,7 +16,8 @@ import {
   UserCheck,
   Shield,
   UserCog,
-  FileCheck
+  FileCheck,
+  Layers
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -48,6 +49,7 @@ export const Navbar = () => {
   // Teacher navigation items
   const teacherNavItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/create-test', label: 'Create Test', icon: Layers },
     { path: '/students', label: 'Students', icon: Users },
     { path: '/upload', label: 'Upload Answer', icon: UploadCloud },
     { path: '/model-answer', label: 'Model Answer', icon: BookOpen },

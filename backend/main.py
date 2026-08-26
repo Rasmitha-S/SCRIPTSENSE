@@ -1,54 +1,19 @@
 import os
+import sqlite3
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from database import engine, Base, SessionLocal
 import models
-from routers import auth, uploads, evaluation, results, students, system, admin
+from routers import auth, uploads, evaluation, results, students, system, admin, tests
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-    title="ScriptSense API",
-    description="Backend API for Handwritten Answer Evaluation System with OCR & AI Semantic Scoring",
-    version="1.0.0"
-)
-
-# 9.2 CORS Configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:[0-9]+)?",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Register routers
-app.include_router(auth.router)
-app.include_router(admin.router)
-app.include_router(students.router)
-app.include_router(uploads.router)
-app.include_router(evaluation.router)
-app.include_router(results.router)
-app.include_router(system.router)
-
-# Mount uploads static directory
-upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
-os.makedirs(upload_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
-
-import sqlite3
-from datetime import datetime
 
 def migrate_database_schema():
     """
@@ -97,6 +62,8 @@ def migrate_database_schema():
             cursor.execute("ALTER TABLE answer_sheets ADD COLUMN uploaded_by VARCHAR(50);")
         if "teacher_id" not in sheet_cols:
             cursor.execute("ALTER TABLE answer_sheets ADD COLUMN teacher_id INTEGER REFERENCES users(id);")
+        if "test_id" not in sheet_cols:
+            cursor.execute("ALTER TABLE answer_sheets ADD COLUMN test_id INTEGER REFERENCES tests(id);")
 
         # Backfill answer_sheets.teacher_id from students.teacher_id where possible
         cursor.execute("""
@@ -116,6 +83,8 @@ def migrate_database_schema():
             cursor.execute("ALTER TABLE model_answers ADD COLUMN questions_json TEXT;")
         if "rubric_json" not in model_cols:
             cursor.execute("ALTER TABLE model_answers ADD COLUMN rubric_json TEXT;")
+        if "test_id" not in model_cols:
+            cursor.execute("ALTER TABLE model_answers ADD COLUMN test_id INTEGER REFERENCES tests(id);")
 
         # Check evaluations table
         cursor.execute("PRAGMA table_info(evaluations);")
@@ -135,12 +104,15 @@ def migrate_database_schema():
 
         cursor.execute("UPDATE students SET created_at = datetime('now') WHERE created_at IS NULL;")
             
-        # Ensure non-unique index on roll_number and index on teacher_id
+        # Ensure non-unique index on roll_number and index on teacher_id and test_id
         try:
             cursor.execute("DROP INDEX IF EXISTS ix_students_roll_number;")
             cursor.execute("CREATE INDEX IF NOT EXISTS ix_students_roll_number ON students (roll_number);")
             cursor.execute("CREATE INDEX IF NOT EXISTS ix_students_teacher_id ON students (teacher_id);")
             cursor.execute("CREATE INDEX IF NOT EXISTS ix_answer_sheets_teacher_id ON answer_sheets (teacher_id);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS ix_answer_sheets_test_id ON answer_sheets (test_id);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS ix_model_answers_test_id ON model_answers (test_id);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS ix_tests_teacher_id ON tests (teacher_id);")
         except Exception:
             pass
 
@@ -154,12 +126,12 @@ def migrate_database_schema():
         conn.commit()
         conn.close()
 
-# Execute schema updates
+# Execute schema updates at import time
 migrate_database_schema()
 
 
-@app.on_event("startup")
-def startup_seed_teacher_accounts():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """
     Seeds default admin and teacher accounts and pre-warms EasyOCR model for instantaneous upload response.
     """
@@ -188,7 +160,7 @@ def startup_seed_teacher_accounts():
                 role="admin",
                 full_name="System Administrator",
                 is_active=True,
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             db.add(seeded_admin)
             db.commit()
@@ -217,7 +189,7 @@ def startup_seed_teacher_accounts():
                     role="teacher",
                     full_name=t["full_name"],
                     is_active=True,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
                 db.add(seeded_teacher)
                 db.commit()
@@ -230,6 +202,48 @@ def startup_seed_teacher_accounts():
                 db.commit()
     finally:
         db.close()
+
+    yield
+
+
+app = FastAPI(
+    title="ScriptSense API",
+    description="Backend API for Handwritten Answer Evaluation System with OCR & AI Semantic Scoring",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# 9.2 CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:[0-9]+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register routers
+app.include_router(auth.router)
+app.include_router(admin.router)
+app.include_router(tests.router)
+app.include_router(students.router)
+app.include_router(uploads.router)
+app.include_router(evaluation.router)
+app.include_router(results.router)
+app.include_router(system.router)
+
+# Mount uploads static directory
+upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+os.makedirs(upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 
 @app.get("/")

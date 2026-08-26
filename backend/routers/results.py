@@ -2,7 +2,7 @@ import csv
 import io
 import json
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 
@@ -149,7 +149,7 @@ def export_results_csv(
         ])
 
     csv_content = output.getvalue()
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"scriptsense_results_{timestamp}.csv"
 
     return Response(
@@ -252,7 +252,7 @@ def save_teacher_verified_result(
 
     final_result = db.query(models.FinalResult).filter(models.FinalResult.evaluation_id == id).first()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     verifier_name = current_user.full_name or current_user.username
 
     rubric_adjs_json = json.dumps([a.model_dump() for a in request.rubric_adjustments]) if request.rubric_adjustments else None

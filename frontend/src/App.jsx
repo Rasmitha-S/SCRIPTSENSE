@@ -7,6 +7,7 @@ import { Navbar } from './components/Navbar';
 // Pages
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
+import { CreateTest } from './pages/CreateTest';
 import { Students } from './pages/Students';
 import { UploadAnswer } from './pages/UploadAnswer';
 import { ModelAnswer } from './pages/ModelAnswer';
@@ -78,6 +79,14 @@ export default function App() {
                 element={
                   <ProtectedRoute roleRequired="teacher">
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/create-test"
+                element={
+                  <ProtectedRoute roleRequired="teacher">
+                    <CreateTest />
                   </ProtectedRoute>
                 }
               />

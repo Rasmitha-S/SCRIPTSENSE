@@ -86,7 +86,9 @@ class CharDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
-def train_and_save_model(output_path: str = None, epochs: int = 10, batch_size: int = 64, lr: float = 0.003):
+from typing import Optional
+
+def train_and_save_model(output_path: Optional[str] = None, epochs: int = 10, batch_size: int = 64, lr: float = 0.003):
     """
     Trains the HandwritingCNN on augmented character dataset and saves weights.
     """

@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { uploadAnswerSheetApi, getStudentsApi, updateTranscriptApi } from '../services/api';
+import { 
+  uploadAnswerSheetApi, 
+  getStudentsApi, 
+  getTestsApi,
+  updateTranscriptApi 
+} from '../services/api';
 import { 
   UploadCloud, 
   FileText, 
@@ -22,15 +27,23 @@ import {
   Edit3,
   Save,
   Check,
-  Loader2
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  HelpCircle
 } from 'lucide-react';
 
 export const UploadAnswer = () => {
   const { token, workflowData, updateWorkflow } = useAuth();
   const navigate = useNavigate();
 
-  const [studentName, setStudentName] = useState(workflowData.studentName || 'Alex Rivera');
-  const [rollNumber, setRollNumber] = useState(workflowData.rollNumber || 'CS2026-0101');
+  // Test Selection state
+  const [testsList, setTestsList] = useState([]);
+  const [selectedTestId, setSelectedTestId] = useState(workflowData.testId || null);
+  const [loadingTests, setLoadingTests] = useState(false);
+
+  const [studentName, setStudentName] = useState(workflowData.studentName || '');
+  const [rollNumber, setRollNumber] = useState(workflowData.rollNumber || '');
   const [selectedStudentId, setSelectedStudentId] = useState(workflowData.studentId || null);
   const [registeredStudents, setRegisteredStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -54,6 +67,9 @@ export const UploadAnswer = () => {
 
   // Sync local state when workflowData changes
   useEffect(() => {
+    if (workflowData.testId) {
+      setSelectedTestId(workflowData.testId);
+    }
     if (workflowData.studentName) {
       setStudentName(workflowData.studentName);
     }
@@ -66,11 +82,28 @@ export const UploadAnswer = () => {
     if (workflowData.extractedText) {
       setEditableTranscript(workflowData.extractedText);
     }
-  }, [workflowData.studentId, workflowData.studentName, workflowData.rollNumber, workflowData.extractedText]);
+  }, [workflowData.testId, workflowData.studentId, workflowData.studentName, workflowData.rollNumber, workflowData.extractedText]);
 
-  // Fetch registered students from SQLite on mount
+  // Fetch Tests and registered students from SQLite on mount
   useEffect(() => {
     if (token) {
+      setLoadingTests(true);
+      getTestsApi(token)
+        .then((tests) => {
+          setTestsList(tests || []);
+          if (tests && tests.length > 0 && !selectedTestId) {
+            setSelectedTestId(tests[0].id);
+            updateWorkflow({
+              testId: tests[0].id,
+              testName: tests[0].test_name,
+              modelAnswerId: tests[0].model_answer_id,
+              maxMarks: tests[0].max_marks,
+            });
+          }
+        })
+        .catch((err) => console.warn("Could not fetch tests:", err))
+        .finally(() => setLoadingTests(false));
+
       setLoadingStudents(true);
       getStudentsApi(token)
         .then((students) => {
@@ -84,6 +117,24 @@ export const UploadAnswer = () => {
         });
     }
   }, [token]);
+
+  const handleSelectTest = (testIdStr) => {
+    if (!testIdStr) {
+      setSelectedTestId(null);
+      return;
+    }
+    const tId = parseInt(testIdStr);
+    setSelectedTestId(tId);
+    const foundTest = testsList.find((t) => t.id === tId);
+    if (foundTest) {
+      updateWorkflow({
+        testId: foundTest.id,
+        testName: foundTest.test_name,
+        modelAnswerId: foundTest.model_answer_id,
+        maxMarks: foundTest.max_marks,
+      });
+    }
+  };
 
   const handleSelectExistingStudent = (studentIdStr) => {
     if (!studentIdStr) {
@@ -189,14 +240,20 @@ export const UploadAnswer = () => {
         studentName.trim(),
         rollNumber.trim() || null,
         selectedStudentId || null,
-        token
+        token,
+        selectedTestId || null
       );
+
+      const targetTest = testsList.find((t) => t.id === (data.test_id || selectedTestId));
 
       updateWorkflow({
         answerSheetId: data.answer_sheet_id,
         studentId: data.student_id,
         studentName: data.student_name || studentName.trim(),
         rollNumber: data.roll_number || rollNumber.trim(),
+        testId: data.test_id || selectedTestId,
+        testName: data.test_name || (targetTest ? targetTest.test_name : undefined),
+        modelAnswerId: targetTest ? targetTest.model_answer_id : workflowData.modelAnswerId,
         fileName: file.name,
         filePath: data.file_path,
         extractedText: data.extracted_text,
@@ -248,35 +305,6 @@ export const UploadAnswer = () => {
     navigate(targetRoute);
   };
 
-  const loadSampleAnswerFile = () => {
-    setStudentName('Alex Rivera');
-    setRollNumber('CS2026-0101');
-    setSelectedStudentId(null);
-    
-    const canvas = document.createElement('canvas');
-    canvas.width = 600;
-    canvas.height = 300;
-    const ctx = canvas.getContext('2d');
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText('Student Answer - Physics Exam', 30, 45);
-    ctx.font = '14px sans-serif';
-    ctx.fillText('TCP is a connection oriented protocol that ensures', 30, 90);
-    ctx.fillText('reliable and ordered delivery of data packets.', 30, 120);
-    ctx.fillText('It uses a three-way handshake mechanism to establish connection.', 30, 150);
-
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const sampleFile = new File([blob], 'student_sample_answer.png', { type: 'image/png' });
-        validateAndSetFile(sampleFile);
-      }
-    }, 'image/png');
-  };
-
   const charCount = (editableTranscript || '').length;
   const wordCount = (editableTranscript || '').trim().split(/\s+/).filter(Boolean).length;
 
@@ -296,15 +324,6 @@ export const UploadAnswer = () => {
             Upload student handwritten responses for high-speed OCR extraction and AI evaluation.
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={loadSampleAnswerFile}
-          className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/30 hover:bg-brand-500/20 transition-colors shadow-sm self-start sm:self-auto"
-        >
-          <Sparkles className="w-4 h-4 text-brand-400" />
-          <span>Load 2-Mark Sample Answer</span>
-        </button>
       </div>
 
       {/* Main Upload Card */}
@@ -327,6 +346,62 @@ export const UploadAnswer = () => {
               </button>
             </div>
           )}
+
+          {/* ============================================================ */}
+          {/* Test Selector (Test-Centric Workflow)                        */}
+          {/* ============================================================ */}
+          <div className="p-4 rounded-2xl bg-brand-950/40 border border-brand-500/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-brand-300 flex items-center space-x-1.5">
+                <Layers className="w-4 h-4 text-brand-400" />
+                <span>Select Test / Exam</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => navigate('/create-test')}
+                className="text-xs font-semibold text-brand-400 hover:text-brand-300 transition-colors"
+              >
+                + Create New Test
+              </button>
+            </div>
+
+            {loadingTests ? (
+              <div className="text-xs text-slate-400 py-1">Loading available tests...</div>
+            ) : testsList.length === 0 ? (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
+                <span>No tests created yet. Setup a test to auto-bind model answers.</span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/create-test')}
+                  className="font-bold text-brand-400 underline ml-2"
+                >
+                  Create Test
+                </button>
+              </div>
+            ) : (
+              <select
+                value={selectedTestId || ''}
+                onChange={(e) => handleSelectTest(e.target.value)}
+                className="glass-input block w-full px-4 py-2.5 sm:text-sm rounded-xl text-white font-medium bg-slate-900 border-brand-500/40 focus:border-brand-400"
+              >
+                <option value="">-- Direct Upload (No Test Attached) --</option>
+                {testsList.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    Test #{t.id}: {t.test_name} ({t.subject || 'General'}) • {t.max_marks} M • {t.students_count} Students
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {selectedTestId && (
+              <div className="text-[11px] text-brand-300/80 flex items-center space-x-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-brand-400" />
+                <span>
+                  Model answer for this test is automatically applied behind the scenes.
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Student Selection / Metadata Header */}
           <div className="space-y-4">
@@ -377,7 +452,7 @@ export const UploadAnswer = () => {
                     setStudentName(e.target.value);
                     setSelectedStudentId(null);
                   }}
-                  placeholder="e.g. Alex Rivera"
+                  placeholder="Enter student full name"
                   className="glass-input block w-full px-4 py-2.5 sm:text-sm rounded-xl"
                 />
               </div>
@@ -395,7 +470,7 @@ export const UploadAnswer = () => {
                     setRollNumber(e.target.value);
                     setSelectedStudentId(null);
                   }}
-                  placeholder="e.g. CS2026-0101"
+                  placeholder="Enter roll number"
                   className="glass-input block w-full px-4 py-2.5 sm:text-sm rounded-xl font-mono text-slate-200"
                 />
               </div>
