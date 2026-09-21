@@ -32,6 +32,7 @@
     "@types/pdf-parse": "^1.1.4",
     "concurrently": "^9.0.1",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "vercel": "^59.23.2"
   }
 }

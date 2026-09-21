@@ -7,7 +7,7 @@ import { User, TokenPayload } from '../types/index.js';
 
 dotenv.config();
 
-export const SECRET_KEY = process.env.SECRET_KEY || 'scriptsense_super_secret_jwt_key_2026_educator_token';
+export const SECRET_KEY = process.env.JWT_SECRET || process.env.SECRET_KEY || 'scriptsense_super_secret_jwt_key_2026_educator_token';
 export const ACCESS_TOKEN_EXPIRE_MINUTES = parseInt(process.env.ACCESS_TOKEN_EXPIRE_MINUTES || '1440', 10);
 
 // Extend Express Request type to include user
