@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getResultApi, saveFinalResultApi, listAllResultsApi } from '../services/api';
@@ -15,63 +15,54 @@ import {
   Edit3, 
   AlertCircle, 
   Printer, 
-  Layers,
-  ChevronDown,
-  ChevronUp,
-  Zap,
-  Check,
-  RotateCcw,
-  ArrowRight,
-  User,
-  Clock,
-  ThumbsUp,
-  MessageSquare,
-  Users,
-  Hash,
-  ListOrdered,
-  Tag,
-  GraduationCap
+  Layers, 
+  Clock, 
+  Users, 
+  ListOrdered, 
+  Tag, 
+  GraduationCap, 
+  Zap 
 } from 'lucide-react';
+import { ResultResponse, QuestionResult, ResultUpdateRequest } from '../types';
 
 const FEEDBACK_PRESETS = [
-  "Excellent conceptual clarity; steps and logic are complete.",
-  "Accurate formula and core definition, but remember to include standard SI units.",
-  "Good attempt; partially correct concept but requires further elaboration.",
-  "Core principle is understood, but key terms/steps were omitted.",
-  "Needs review on definitions and fundamental principles.",
+  'Excellent conceptual clarity; steps and logic are complete.',
+  'Accurate formula and core definition, but remember to include standard SI units.',
+  'Good attempt; partially correct concept but requires further elaboration.',
+  'Core principle is understood, but key terms/steps were omitted.',
+  'Needs review on definitions and fundamental principles.',
 ];
 
-export const Results = () => {
+export const Results: React.FC = () => {
   const { token, user, workflowData, updateWorkflow } = useAuth();
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id?: string }>();
 
-  const [selectedEvalId, setSelectedEvalId] = useState(
+  const [selectedEvalId, setSelectedEvalId] = useState<number | null>(
     id ? parseInt(id) : workflowData.evaluationId || null
   );
-  const [allEvaluations, setAllEvaluations] = useState([]);
+  const [allEvaluations, setAllEvaluations] = useState<ResultResponse[]>([]);
 
-  // Active question tab in multi-question mode: 'all' or question index (0, 1, 2...)
-  const [activeQuestionTab, setActiveQuestionTab] = useState('all');
+  // Active question tab in multi-question mode: 'all' or question index (1, 2, 3...)
+  const [activeQuestionTab, setActiveQuestionTab] = useState<'all' | number>('all');
 
-  const [resultData, setResultData] = useState(null);
-  const [questionResults, setQuestionResults] = useState([]);
-  const [rubricAdjustments, setRubricAdjustments] = useState([]);
+  const [resultData, setResultData] = useState<ResultResponse | null>(null);
+  const [questionResults, setQuestionResults] = useState<Array<QuestionResult & { question?: string; rubric_scores?: any[] }>>([]);
 
   const maxMarks = resultData?.max_marks || workflowData.maxMarks || 10;
   const suggestedMarks = resultData?.suggested_marks ?? workflowData.suggestedMarks ?? 0;
   const similarity = resultData?.similarity ?? workflowData.similarity ?? 0;
 
-  const [finalMarks, setFinalMarks] = useState(suggestedMarks);
-  const [teacherFeedback, setTeacherFeedback] = useState('');
+  const [finalMarks, setFinalMarks] = useState<number | string>(suggestedMarks);
+  const [teacherFeedback, setTeacherFeedback] = useState<string>('');
 
-  const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [verifiedTime, setVerifiedTime] = useState(null);
-  const [verifiedBy, setVerifiedBy] = useState(null);
-  const [error, setError] = useState('');
-  const [loadingResult, setLoadingResult] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [saving, setSaving] = useState<boolean>(false);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [verifiedTime, setVerifiedTime] = useState<string | null>(null);
+  const [verifiedBy, setVerifiedBy] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
+  const [loadingResult, setLoadingResult] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string>('');
 
   // Sync selectedEvalId when route param changes
   useEffect(() => {
@@ -88,13 +79,13 @@ export const Results = () => {
     if (token) {
       listAllResultsApi(token)
         .then((list) => {
-          setAllEvaluations(list);
+          setAllEvaluations(list || []);
           if (!selectedEvalId && list && list.length > 0) {
             setSelectedEvalId(list[0].evaluation_id);
           }
         })
         .catch((err) => {
-          console.warn("Could not list all results:", err);
+          console.warn('Could not list all results:', err);
         });
     }
   };
@@ -152,23 +143,23 @@ export const Results = () => {
             evaluationId: data.evaluation_id,
             answerSheetId: data.answer_sheet_id,
             studentId: data.student_id,
-            studentName: data.student_name,
-            rollNumber: data.roll_number,
-            extractedText: data.extracted_text,
-            examTitle: data.title,
-            question: data.question,
-            modelAnswerText: data.model_answer,
+            studentName: data.student_name || '',
+            rollNumber: data.roll_number || '',
+            extractedText: data.extracted_text || '',
+            examTitle: data.title || '',
+            question: data.question || '',
+            modelAnswerText: data.model_answer || '',
             maxMarks: data.max_marks,
             similarity: data.similarity,
             suggestedMarks: data.suggested_marks,
-            explanation: data.explanation,
+            explanation: data.explanation || '',
             finalMarks: data.final_marks,
             teacherFeedback: data.teacher_feedback || '',
           });
         })
         .catch((err) => {
-          console.warn("Failed to fetch evaluation record:", err);
-          setError("Could not load evaluation details from SQLite.");
+          console.warn('Failed to fetch evaluation record:', err);
+          setError('Could not load evaluation details from SQLite.');
         })
         .finally(() => {
           setLoadingResult(false);
@@ -176,7 +167,7 @@ export const Results = () => {
     }
   }, [selectedEvalId, token]);
 
-  const handleSelectEval = (evalIdStr) => {
+  const handleSelectEval = (evalIdStr: string) => {
     const newId = parseInt(evalIdStr);
     if (!isNaN(newId)) {
       setSelectedEvalId(newId);
@@ -185,15 +176,19 @@ export const Results = () => {
   };
 
   // Adjust marks for a specific question in multi-question mode
-  const handleUpdateQuestionMarks = (qNum, deltaOrValue, isDirectValue = false) => {
+  const handleUpdateQuestionMarks = (qNum: number, deltaOrValue: number | string, isDirectValue = false) => {
     setQuestionResults((prev) => {
       const updated = prev.map((q) => {
         if (q.q_num === qNum) {
-          let newScore;
+          let newScore: number;
+          const maxAllowed = q.max_marks || 10;
           if (isDirectValue) {
-            newScore = Math.max(0, Math.min(q.max_marks, parseFloat(deltaOrValue) || 0));
+            newScore = Math.max(0, Math.min(maxAllowed, parseFloat(String(deltaOrValue)) || 0));
           } else {
-            newScore = Math.max(0, Math.min(q.max_marks, Number(((parseFloat(q.final_marks) || 0) + deltaOrValue).toFixed(1))));
+            newScore = Math.max(
+              0,
+              Math.min(maxAllowed, Number(((parseFloat(String(q.final_marks)) || 0) + Number(deltaOrValue)).toFixed(1)))
+            );
           }
           return { ...q, final_marks: newScore };
         }
@@ -201,13 +196,13 @@ export const Results = () => {
       });
 
       // Recalculate total confirmed score
-      const newTotal = updated.reduce((sum, q) => sum + (parseFloat(q.final_marks) || 0), 0);
+      const newTotal = updated.reduce((sum, q) => sum + (parseFloat(String(q.final_marks)) || 0), 0);
       setFinalMarks(Number(newTotal.toFixed(1)));
       return updated;
     });
   };
 
-  const handleUpdateQuestionComment = (qNum, comment) => {
+  const handleUpdateQuestionComment = (qNum: number, comment: string) => {
     setQuestionResults((prev) =>
       prev.map((q) => (q.q_num === qNum ? { ...q, teacher_comment: comment } : q))
     );
@@ -234,24 +229,24 @@ export const Results = () => {
     setFinalMarks(maxMarks);
     if (questionResults.length > 0) {
       setQuestionResults((prev) =>
-        prev.map((q) => ({ ...q, final_marks: q.max_marks }))
+        prev.map((q) => ({ ...q, final_marks: q.max_marks || 10 }))
       );
     }
   };
 
-  const handleAddFeedbackSnippet = (snippet) => {
+  const handleAddFeedbackSnippet = (snippet: string) => {
     setTeacherFeedback((prev) => {
       if (!prev.trim()) return snippet;
       return `${prev.trim()} ${snippet}`;
     });
   };
 
-  const handleSaveFinalResult = async (e) => {
+  const handleSaveFinalResult = async (e?: FormEvent) => {
     e?.preventDefault();
     setError('');
     setToastMessage('');
 
-    const marksNum = parseFloat(finalMarks);
+    const marksNum = parseFloat(String(finalMarks));
     if (isNaN(marksNum) || marksNum < 0 || marksNum > maxMarks) {
       setError(`Final marks must be a number between 0 and ${maxMarks}.`);
       return;
@@ -265,12 +260,12 @@ export const Results = () => {
     setSaving(true);
 
     try {
-      const payload = {
+      const payload: ResultUpdateRequest = {
         final_marks: marksNum,
-        teacher_feedback: teacherFeedback.trim(),
+        teacher_feedback: teacherFeedback.trim() || undefined,
         question_results: questionResults.map((q) => ({
           q_num: q.q_num,
-          final_marks: parseFloat(q.final_marks) || 0,
+          final_marks: parseFloat(String(q.final_marks)) || 0,
           max_marks: q.max_marks,
           teacher_comment: q.teacher_comment || '',
         })),
@@ -288,7 +283,7 @@ export const Results = () => {
       });
 
       setVerifiedTime(verifiedAtStr);
-      setVerifiedBy(data.verified_by || user?.full_name || user?.username || 'Teacher');
+      setVerifiedBy(data.verified_by || user?.full_name || user?.name || user?.username || 'Teacher');
       setSaveSuccess(true);
       setToastMessage('Score successfully verified and committed to SQLite database!');
 
@@ -302,7 +297,7 @@ export const Results = () => {
       );
 
       setTimeout(() => setToastMessage(''), 4000);
-    } catch (err) {
+    } catch (err: any) {
       const errorDetail = err.response?.data?.detail || err.message || 'Failed to save final marks to SQLite.';
       setError(errorDetail);
     } finally {
@@ -361,7 +356,7 @@ export const Results = () => {
             >
               {allEvaluations.map((item) => (
                 <option key={item.evaluation_id} value={item.evaluation_id} className="bg-slate-900 text-slate-200">
-                  Eval #{item.evaluation_id} — {item.student_name || 'Anonymous'} ({item.roll_number || 'No Roll'}) {item.final_marks !== null ? `[Verified: ${item.final_marks}/${item.max_marks}]` : '[Pending Review]'}
+                  Eval #{item.evaluation_id} — {item.student_name || 'Anonymous'} ({item.roll_number || 'No Roll'}) {item.final_marks !== null && item.final_marks !== undefined ? `[Verified: ${item.final_marks}/${item.max_marks}]` : '[Pending Review]'}
                 </option>
               ))}
             </select>
@@ -441,7 +436,7 @@ export const Results = () => {
               {hasMultiQuestions && (
                 <>
                   <span>•</span>
-                  <span className="text-brand-300 font-semibold">{resultData.question_evaluations.length} Questions</span>
+                  <span className="text-brand-300 font-semibold">{resultData!.question_evaluations!.length} Questions</span>
                 </>
               )}
             </div>
@@ -549,12 +544,12 @@ export const Results = () => {
         </div>
         <p className="text-sm text-slate-300 leading-relaxed bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80">
           {resultData?.explanation || workflowData.explanation || 
-            "Semantic analysis indicates comprehensive overlap with the reference answer. The student response captures key conceptual formulations consistent with grading rubric."}
+            'Semantic analysis indicates comprehensive overlap with the reference answer. The student response captures key conceptual formulations consistent with grading rubric.'}
         </p>
       </div>
 
       {/* Per-Question Marks Breakdown Summary Card */}
-      {hasMultiQuestions && (
+      {hasMultiQuestions && resultData?.question_evaluations && (
         <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4 animate-fade-in">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div className="flex items-center space-x-2">
@@ -590,7 +585,7 @@ export const Results = () => {
                         {qe.max_marks} M
                       </td>
                       <td className="py-3 px-3 text-center font-bold text-violet-300">
-                        {qe.suggested_marks} <span className="text-[10px] text-slate-400 font-normal">/ {qe.max_marks} ({(qe.similarity * 100).toFixed(0)}%)</span>
+                        {qe.suggested_marks} <span className="text-[10px] text-slate-400 font-normal">/ {qe.max_marks} ({((qe.similarity || 0) * 100).toFixed(0)}%)</span>
                       </td>
                       <td className="py-3 px-3 text-center">
                         <div className="inline-flex items-center space-x-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
@@ -632,10 +627,10 @@ export const Results = () => {
                     TOTAL CUMULATIVE SCORE (Sum of all questions):
                   </td>
                   <td className="py-3 px-3 text-center text-emerald-400 font-extrabold text-sm">
-                    {resultData.question_evaluations.reduce((sum, q) => sum + (parseFloat(q.max_marks) || 0), 0)} M
+                    {resultData.question_evaluations.reduce((sum, q) => sum + (parseFloat(String(q.max_marks)) || 0), 0)} M
                   </td>
                   <td className="py-3 px-3 text-center text-violet-300 font-extrabold text-sm">
-                    {resultData.question_evaluations.reduce((sum, q) => sum + (parseFloat(q.suggested_marks) || 0), 0).toFixed(1)} M
+                    {resultData.question_evaluations.reduce((sum, q) => sum + (parseFloat(String(q.suggested_marks)) || 0), 0).toFixed(1)} M
                   </td>
                   <td className="py-3 px-3 text-center text-emerald-400 font-extrabold text-sm">
                     {finalMarks} / {maxMarks} M
@@ -648,7 +643,7 @@ export const Results = () => {
       )}
 
       {/* Multi-Question Tabs (if multi-question exam) */}
-      {hasMultiQuestions && (
+      {hasMultiQuestions && resultData?.question_evaluations && (
         <div className="flex items-center space-x-2 p-1.5 rounded-2xl bg-slate-900/80 border border-slate-800 overflow-x-auto">
           <button
             type="button"
@@ -687,7 +682,7 @@ export const Results = () => {
       )}
 
       {/* Question Details & Step-Wise Rubric Console */}
-      {hasMultiQuestions ? (
+      {hasMultiQuestions && resultData?.question_evaluations ? (
         <div className="space-y-6">
           {resultData.question_evaluations
             .filter((qe) => activeQuestionTab === 'all' || activeQuestionTab === qe.q_num)
@@ -695,6 +690,7 @@ export const Results = () => {
               const qState = questionResults.find((qr) => qr.q_num === qe.q_num) || {
                 final_marks: qe.suggested_marks,
                 teacher_comment: '',
+                q_num: qe.q_num,
               };
 
               return (
@@ -708,7 +704,7 @@ export const Results = () => {
                         </span>
                         <span className="text-xs text-slate-400">Max: {qe.max_marks} Marks</span>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300">
-                          AI Sim: {(qe.similarity * 100).toFixed(0)}%
+                          AI Sim: {((qe.similarity || 0) * 100).toFixed(0)}%
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-white mt-1">{qe.question}</h3>
@@ -754,7 +750,7 @@ export const Results = () => {
                         </span>
                       </div>
                       <div className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 text-xs font-mono text-slate-200 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto">
-                        {qe.student_answer || "No text parsed for this question."}
+                        {qe.student_answer || 'No text parsed for this question.'}
                       </div>
                     </div>
 
@@ -766,7 +762,7 @@ export const Results = () => {
                         </span>
                       </div>
                       <div className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 text-xs text-slate-200 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto">
-                        {qe.model_answer || "No reference solution set."}
+                        {qe.model_answer || 'No reference solution set.'}
                       </div>
                     </div>
                   </div>
@@ -796,7 +792,7 @@ export const Results = () => {
                                     <Tag className="w-2.5 h-2.5 text-emerald-400" />
                                     <span>Verified Concepts:</span>
                                   </span>
-                                  {r.matched_keywords.map((kw, kwIdx) => (
+                                  {r.matched_keywords.map((kw: string, kwIdx: number) => (
                                     <span key={kwIdx} className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                                       ✓ {kw}
                                     </span>
@@ -841,7 +837,7 @@ export const Results = () => {
               </span>
             </div>
             <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 text-xs font-mono text-slate-200 leading-relaxed min-h-[140px] max-h-72 overflow-y-auto whitespace-pre-wrap">
-              {resultData?.extracted_text || workflowData.extractedText || "No student answer text available."}
+              {resultData?.extracted_text || workflowData.extractedText || 'No student answer text available.'}
             </div>
           </div>
 
@@ -854,7 +850,7 @@ export const Results = () => {
               <span className="text-xs text-slate-400 font-semibold">Max: {maxMarks} Marks</span>
             </div>
             <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-200 leading-relaxed min-h-[140px] max-h-72 overflow-y-auto whitespace-pre-wrap">
-              {resultData?.model_answer || workflowData.modelAnswerText || "No reference answer available."}
+              {resultData?.model_answer || workflowData.modelAnswerText || 'No reference answer available.'}
             </div>
           </div>
         </div>

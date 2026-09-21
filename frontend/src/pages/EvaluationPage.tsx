@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { evaluateAnswerApi, batchEvaluateApi, getAnswerSheetsApi, getModelAnswersApi } from '../services/api';
 import { 
   Cpu, 
-  Sparkles, 
   ArrowRight, 
   ArrowLeft, 
   CheckCircle2, 
@@ -12,44 +11,39 @@ import {
   FileText, 
   BookOpen, 
   Zap, 
-  Check, 
-  RefreshCw, 
-  ChevronDown, 
-  Layers, 
-  ListOrdered, 
-  Tag,
-  Users,
-  CheckSquare,
-  Square
+  Users, 
+  CheckSquare, 
+  Square 
 } from 'lucide-react';
+import { AnswerSheet, ModelAnswerListItem, BatchEvaluateResponse } from '../types';
 
-export const EvaluationPage = () => {
+export const EvaluationPage: React.FC = () => {
   const { token, workflowData, updateWorkflow } = useAuth();
   const navigate = useNavigate();
 
   // Mode: 'single' | 'batch'
-  const [evalMode, setEvalMode] = useState('single');
+  const [evalMode, setEvalMode] = useState<'single' | 'batch'>('single');
 
-  const [evaluating, setEvaluating] = useState(false);
-  const [evalStep, setEvalStep] = useState(0);
-  const [error, setError] = useState('');
-  const [evalSuccess, setEvalSuccess] = useState(Boolean(workflowData.evaluationId));
+  const [evaluating, setEvaluating] = useState<boolean>(false);
+  const [evalStep, setEvalStep] = useState<number>(0);
+  const [error, setError] = useState<string>('');
+  const [evalSuccess, setEvalSuccess] = useState<boolean>(Boolean(workflowData.evaluationId));
 
   // Available selections loaded from backend
-  const [availableSheets, setAvailableSheets] = useState([]);
-  const [availableModels, setAvailableModels] = useState([]);
-  const [loadingSelections, setLoadingSelections] = useState(false);
+  const [availableSheets, setAvailableSheets] = useState<AnswerSheet[]>([]);
+  const [availableModels, setAvailableModels] = useState<ModelAnswerListItem[]>([]);
+  const [loadingSelections, setLoadingSelections] = useState<boolean>(false);
 
   // Batch evaluation state
-  const [selectedBatchSheetIds, setSelectedBatchSheetIds] = useState([]);
-  const [batchResults, setBatchResults] = useState(null);
+  const [selectedBatchSheetIds, setSelectedBatchSheetIds] = useState<number[]>([]);
+  const [batchResults, setBatchResults] = useState<BatchEvaluateResponse | null>(null);
 
   useEffect(() => {
     if (token) {
       setLoadingSelections(true);
       Promise.all([
-        getAnswerSheetsApi(token).catch(() => []),
-        getModelAnswersApi(token).catch(() => []),
+        getAnswerSheetsApi(token).catch(() => [] as AnswerSheet[]),
+        getModelAnswersApi(token).catch(() => [] as ModelAnswerListItem[]),
       ])
         .then(([sheets, models]) => {
           setAvailableSheets(sheets);
@@ -66,10 +60,10 @@ export const EvaluationPage = () => {
             updateWorkflow({
               answerSheetId: latest.id,
               studentId: latest.student_id,
-              studentName: latest.student_name,
-              rollNumber: latest.roll_number,
+              studentName: latest.student_name || '',
+              rollNumber: latest.roll_number || '',
               fileName: latest.file_path,
-              extractedText: latest.extracted_text,
+              extractedText: latest.extracted_text || '',
             });
           }
 
@@ -78,12 +72,12 @@ export const EvaluationPage = () => {
             const latestM = models[0];
             updateWorkflow({
               modelAnswerId: latestM.id,
-              question: latestM.question,
-              modelAnswerText: latestM.answer_text,
-              maxMarks: latestM.max_marks,
-              examTitle: latestM.title,
-              examSubject: latestM.subject,
-              questions: latestM.questions,
+              question: latestM.question || '',
+              modelAnswerText: latestM.answer_text || '',
+              maxMarks: latestM.max_marks || 10,
+              examTitle: latestM.title || '',
+              examSubject: latestM.subject || '',
+              questions: [],
             });
           }
         })
@@ -98,7 +92,7 @@ export const EvaluationPage = () => {
   const isReady = hasAnswerSheet && hasModelAnswer;
 
   const currentModel = availableModels.find((m) => m.id === workflowData.modelAnswerId);
-  const isMultiQuestion = Boolean(currentModel?.questions && currentModel.questions.length > 0);
+  const isMultiQuestion = Boolean(currentModel?.questions_count && currentModel.questions_count > 1);
 
   const evaluationSteps = isMultiQuestion
     ? [
@@ -114,46 +108,44 @@ export const EvaluationPage = () => {
         { title: 'Synthesizing Explanation', desc: 'Structuring semantic coverage & keyword alignment summary' },
       ];
 
-  const handleSelectSheet = (sheetId) => {
+  const handleSelectSheet = (sheetId: string) => {
     const selected = availableSheets.find((s) => s.id === Number(sheetId));
     if (selected) {
       updateWorkflow({
         answerSheetId: selected.id,
         studentId: selected.student_id,
-        studentName: selected.student_name,
-        rollNumber: selected.roll_number,
+        studentName: selected.student_name || '',
+        rollNumber: selected.roll_number || '',
         fileName: selected.file_path,
-        extractedText: selected.extracted_text,
+        extractedText: selected.extracted_text || '',
         evaluationId: null,
         similarity: null,
         suggestedMarks: null,
-        questionEvaluations: null,
       });
       setEvalSuccess(false);
     }
   };
 
-  const handleSelectModel = (modelId) => {
+  const handleSelectModel = (modelId: string) => {
     const selected = availableModels.find((m) => m.id === Number(modelId));
     if (selected) {
       updateWorkflow({
         modelAnswerId: selected.id,
-        question: selected.question,
-        modelAnswerText: selected.answer_text,
-        maxMarks: selected.max_marks,
-        examTitle: selected.title,
-        examSubject: selected.subject,
-        questions: selected.questions,
+        question: selected.question || '',
+        modelAnswerText: selected.answer_text || '',
+        maxMarks: selected.max_marks || 10,
+        examTitle: selected.title || '',
+        examSubject: selected.subject || '',
+        questions: [],
         evaluationId: null,
         similarity: null,
         suggestedMarks: null,
-        questionEvaluations: null,
       });
       setEvalSuccess(false);
     }
   };
 
-  const handleToggleBatchSheet = (id) => {
+  const handleToggleBatchSheet = (id: number) => {
     setSelectedBatchSheetIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -168,7 +160,7 @@ export const EvaluationPage = () => {
   };
 
   const handleRunEvaluation = async () => {
-    if (!isReady) {
+    if (!isReady || !workflowData.answerSheetId) {
       setError('Please select both an Answer Sheet (Step 1) and a Model Answer / Exam (Step 2) from SQLite first.');
       return;
     }
@@ -201,13 +193,12 @@ export const EvaluationPage = () => {
         suggestedMarks: data.suggested_marks,
         maxMarks: data.max_marks || workflowData.maxMarks,
         explanation: data.explanation,
-        rubricScores: data.rubric_scores,
-        questionEvaluations: data.question_evaluations,
+        rubric: data.rubric_scores as any,
         finalMarks: null,
       });
 
       setEvalSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       clearInterval(stepInterval);
       const errorDetail = err.response?.data?.detail || err.message || 'Evaluation failed. Check backend connection.';
       setError(errorDetail);
@@ -243,7 +234,7 @@ export const EvaluationPage = () => {
 
       setBatchResults(res);
       setEvalSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       const errorDetail = err.response?.data?.detail || err.message || 'Batch evaluation failed.';
       setError(errorDetail);
     } finally {
@@ -299,7 +290,7 @@ export const EvaluationPage = () => {
             <div>
               <span className="text-white block font-bold">AI Evaluation Completed!</span>
               <span className="text-[11px] text-brand-300 font-normal">
-                Suggested Score: {workflowData.suggestedMarks} / {workflowData.maxMarks} ({(workflowData.similarity * 100).toFixed(0)}% Similarity).
+                Suggested Score: {workflowData.suggestedMarks} / {workflowData.maxMarks} ({((workflowData.similarity || 0) * 100).toFixed(0)}% Similarity).
               </span>
             </div>
           </div>
@@ -342,7 +333,7 @@ export const EvaluationPage = () => {
           >
             {availableModels.map((m) => (
               <option key={m.id} value={m.id} className="bg-slate-900 text-slate-100">
-                Exam #{m.id}: {m.title || m.question.slice(0, 45)} ({m.subject}) — Max: {m.max_marks} M [{m.questions_count || 1} Qs]
+                Exam #{m.id}: {m.title || m.question?.slice(0, 45)} ({m.subject || 'General'}) — Max: {m.max_marks} M [{m.questions_count || 1} Qs]
               </option>
             ))}
           </select>

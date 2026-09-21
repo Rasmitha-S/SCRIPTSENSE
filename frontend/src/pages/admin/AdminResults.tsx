@@ -1,43 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getAdminResultsApi, getAdminTeachersApi, exportResultsCsvApi } from '../../services/api';
+import { AdminResultItem, TeacherResponse } from '../../types';
 import { 
   FileCheck, 
   Search, 
-  Filter, 
   RotateCcw, 
   Download, 
   UserCog, 
-  CheckCircle2, 
-  Cpu, 
-  AlertCircle,
-  Award,
-  BookOpen
+  AlertCircle
 } from 'lucide-react';
 
-export const AdminResults = () => {
+export const AdminResults: React.FC = () => {
   const { token } = useAuth();
-  const [results, setResults] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'verified' | 'evaluated'
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [exportingCsv, setExportingCsv] = useState(false);
+  const [results, setResults] = useState<AdminResultItem[]>([]);
+  const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'evaluated'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [exportingCsv, setExportingCsv] = useState<boolean>(false);
 
-  const fetchData = async (teacherFilter = '') => {
+  const fetchData = async (teacherFilter: string = '') => {
     if (!token) return;
     setLoading(true);
     setError('');
     try {
       const [resultsData, teachersData] = await Promise.all([
-        getAdminResultsApi(teacherFilter ? Number(teacherFilter) : null, token),
+        getAdminResultsApi(teacherFilter ? Number(teacherFilter) : undefined, token),
         getAdminTeachersApi(token).catch(() => []),
       ]);
       setResults(resultsData || []);
       setTeachers(teachersData || []);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Failed to fetch evaluation results.');
     } finally {
       setLoading(false);
@@ -59,7 +55,7 @@ export const AdminResults = () => {
       link.setAttribute('download', `ScriptSense_Global_Results_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
-      link.parentNode.removeChild(link);
+      link.parentNode?.removeChild(link);
     } catch (err) {
       console.warn("Failed to export CSV:", err);
     } finally {
@@ -212,7 +208,7 @@ export const AdminResults = () => {
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {filteredResults.length > 0 ? (
                 filteredResults.map((r) => (
-                  <tr key={r.id || r.evaluation_id} className="hover:bg-slate-900/40 transition-colors">
+                  <tr key={r.evaluation_id} className="hover:bg-slate-900/40 transition-colors">
                     <td className="px-5 py-4 font-mono text-slate-400">
                       #{r.evaluation_id}
                     </td>
@@ -260,7 +256,7 @@ export const AdminResults = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="px-5 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-5 py-8 text-center text-slate-500">
                     No results found matching your filters.
                   </td>
                 </tr>

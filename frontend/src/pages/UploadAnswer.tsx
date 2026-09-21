@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, FormEvent, DragEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -10,57 +10,55 @@ import {
 import { 
   UploadCloud, 
   FileText, 
-  CheckCircle2, 
   AlertCircle, 
   ArrowRight, 
   ArrowLeft, 
   X, 
   FileUp, 
   Eye, 
-  Sparkles, 
   Info, 
   Layers, 
-  User, 
+  User as UserIcon, 
   Hash, 
-  UserPlus, 
-  Users,
-  Edit3,
-  Save,
-  Check,
-  Loader2,
-  RefreshCw,
-  ShieldCheck,
-  HelpCircle
+  Users, 
+  Edit3, 
+  Save, 
+  Check, 
+  Loader2, 
+  ShieldCheck 
 } from 'lucide-react';
+import { Student, TestResponse } from '../types';
 
-export const UploadAnswer = () => {
+export const UploadAnswer: React.FC = () => {
   const { token, workflowData, updateWorkflow } = useAuth();
   const navigate = useNavigate();
 
   // Test Selection state
-  const [testsList, setTestsList] = useState([]);
-  const [selectedTestId, setSelectedTestId] = useState(workflowData.testId || null);
-  const [loadingTests, setLoadingTests] = useState(false);
+  const [testsList, setTestsList] = useState<TestResponse[]>([]);
+  const [selectedTestId, setSelectedTestId] = useState<number | null>(workflowData.testId || null);
+  const [loadingTests, setLoadingTests] = useState<boolean>(false);
 
-  const [studentName, setStudentName] = useState(workflowData.studentName || '');
-  const [rollNumber, setRollNumber] = useState(workflowData.rollNumber || '');
-  const [selectedStudentId, setSelectedStudentId] = useState(workflowData.studentId || null);
-  const [registeredStudents, setRegisteredStudents] = useState([]);
-  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [studentName, setStudentName] = useState<string>(workflowData.studentName || '');
+  const [rollNumber, setRollNumber] = useState<string>(workflowData.rollNumber || '');
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(workflowData.studentId || null);
+  const [registeredStudents, setRegisteredStudents] = useState<Student[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
 
-  const [file, setFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [error, setError] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(Boolean(workflowData.answerSheetId && workflowData.extractedText));
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [uploading, setUploading] = useState<boolean>(false);
+  const [uploadSuccess, setUploadSuccess] = useState<boolean>(
+    Boolean(workflowData.answerSheetId && workflowData.extractedText)
+  );
 
   // Transcript editing state
-  const [editableTranscript, setEditableTranscript] = useState(workflowData.extractedText || '');
-  const [savingTranscript, setSavingTranscript] = useState(false);
-  const [transcriptSaveSuccess, setTranscriptSaveSuccess] = useState(false);
+  const [editableTranscript, setEditableTranscript] = useState<string>(workflowData.extractedText || '');
+  const [savingTranscript, setSavingTranscript] = useState<boolean>(false);
+  const [transcriptSaveSuccess, setTranscriptSaveSuccess] = useState<boolean>(false);
 
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
   const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
@@ -82,7 +80,13 @@ export const UploadAnswer = () => {
     if (workflowData.extractedText) {
       setEditableTranscript(workflowData.extractedText);
     }
-  }, [workflowData.testId, workflowData.studentId, workflowData.studentName, workflowData.rollNumber, workflowData.extractedText]);
+  }, [
+    workflowData.testId,
+    workflowData.studentId,
+    workflowData.studentName,
+    workflowData.rollNumber,
+    workflowData.extractedText,
+  ]);
 
   // Fetch Tests and registered students from SQLite on mount
   useEffect(() => {
@@ -101,7 +105,7 @@ export const UploadAnswer = () => {
             });
           }
         })
-        .catch((err) => console.warn("Could not fetch tests:", err))
+        .catch((err) => console.warn('Could not fetch tests:', err))
         .finally(() => setLoadingTests(false));
 
       setLoadingStudents(true);
@@ -110,7 +114,7 @@ export const UploadAnswer = () => {
           setRegisteredStudents(students || []);
         })
         .catch((err) => {
-          console.warn("Could not fetch students list:", err);
+          console.warn('Could not fetch students list:', err);
         })
         .finally(() => {
           setLoadingStudents(false);
@@ -118,7 +122,7 @@ export const UploadAnswer = () => {
     }
   }, [token]);
 
-  const handleSelectTest = (testIdStr) => {
+  const handleSelectTest = (testIdStr: string) => {
     if (!testIdStr) {
       setSelectedTestId(null);
       return;
@@ -136,7 +140,7 @@ export const UploadAnswer = () => {
     }
   };
 
-  const handleSelectExistingStudent = (studentIdStr) => {
+  const handleSelectExistingStudent = (studentIdStr: string) => {
     if (!studentIdStr) {
       setSelectedStudentId(null);
       return;
@@ -150,11 +154,11 @@ export const UploadAnswer = () => {
     }
   };
 
-  const validateAndSetFile = (selectedFile) => {
+  const validateAndSetFile = (selectedFile: File) => {
     setError('');
     if (!selectedFile) return;
 
-    const fileExt = '.' + selectedFile.name.split('.').pop().toLowerCase();
+    const fileExt = '.' + selectedFile.name.split('.').pop()?.toLowerCase();
     const isValidType = allowedTypes.includes(selectedFile.type) || allowedExtensions.includes(fileExt);
 
     if (!isValidType) {
@@ -173,14 +177,14 @@ export const UploadAnswer = () => {
 
     if (selectedFile.type.startsWith('image/')) {
       const reader = new FileReader();
-      reader.onload = (e) => setFilePreview(e.target.result);
+      reader.onload = (e) => setFilePreview(e.target?.result as string);
       reader.readAsDataURL(selectedFile);
     } else {
       setFilePreview(null);
     }
   };
 
-  const handleDrag = (e) => {
+  const handleDrag = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
@@ -190,7 +194,7 @@ export const UploadAnswer = () => {
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -199,7 +203,7 @@ export const UploadAnswer = () => {
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       validateAndSetFile(e.target.files[0]);
     }
@@ -216,7 +220,7 @@ export const UploadAnswer = () => {
     }
   };
 
-  const handleUploadSubmit = async (e) => {
+  const handleUploadSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -238,7 +242,7 @@ export const UploadAnswer = () => {
       const data = await uploadAnswerSheetApi(
         file,
         studentName.trim(),
-        rollNumber.trim() || null,
+        rollNumber.trim() || undefined,
         selectedStudentId || null,
         token,
         selectedTestId || null
@@ -255,7 +259,6 @@ export const UploadAnswer = () => {
         testName: data.test_name || (targetTest ? targetTest.test_name : undefined),
         modelAnswerId: targetTest ? targetTest.model_answer_id : workflowData.modelAnswerId,
         fileName: file.name,
-        filePath: data.file_path,
         extractedText: data.extracted_text,
       });
 
@@ -265,9 +268,16 @@ export const UploadAnswer = () => {
       if (!data.extracted_text || data.extracted_text.startsWith('Text extraction failed')) {
         setError('Text extraction failed. Please try a clearer image or enter the answer manually.');
       }
-    } catch (err) {
-      const errorDetail = err.response?.data?.detail || err.message || 'Text extraction failed. Please try a clearer image or enter the answer manually.';
-      setError(errorDetail.includes('timeout') ? 'Text extraction failed. Please try a clearer image or enter the answer manually.' : errorDetail);
+    } catch (err: any) {
+      const errorDetail =
+        err.response?.data?.detail ||
+        err.message ||
+        'Text extraction failed. Please try a clearer image or enter the answer manually.';
+      setError(
+        errorDetail.includes('timeout')
+          ? 'Text extraction failed. Please try a clearer image or enter the answer manually.'
+          : errorDetail
+      );
     } finally {
       setUploading(false);
     }
@@ -283,8 +293,8 @@ export const UploadAnswer = () => {
       setTimeout(() => setTranscriptSaveSuccess(false), 3000);
       return res.extracted_text;
     } catch (err) {
-      console.warn("Failed to update transcript:", err);
-      setError("Could not update OCR transcript.");
+      console.warn('Failed to update transcript:', err);
+      setError('Could not update OCR transcript.');
     } finally {
       setSavingTranscript(false);
     }
@@ -297,7 +307,7 @@ export const UploadAnswer = () => {
         const res = await updateTranscriptApi(workflowData.answerSheetId, editableTranscript, token);
         updateWorkflow({ extractedText: res.extracted_text });
       } catch (err) {
-        console.warn("Failed to auto-save transcript on continue:", err);
+        console.warn('Failed to auto-save transcript on continue:', err);
       } finally {
         setSavingTranscript(false);
       }
@@ -441,7 +451,7 @@ export const UploadAnswer = () => {
               {/* Student Name Input */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2 flex items-center space-x-1.5">
-                  <User className="w-3.5 h-3.5 text-brand-400" />
+                  <UserIcon className="w-3.5 h-3.5 text-brand-400" />
                   <span>Student Name <span className="text-rose-400">*</span></span>
                 </label>
                 <input
@@ -605,7 +615,7 @@ export const UploadAnswer = () => {
             </div>
           )}
 
-          {/* Interactive OCR Transcript Editor Section - Only visible when NOT uploading and upload was successful or text exists */}
+          {/* Interactive OCR Transcript Editor Section */}
           {!uploading && (uploadSuccess || editableTranscript) && (
             <div className="space-y-4 pt-4 border-t border-slate-800 animate-fade-in">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -704,7 +714,7 @@ export const UploadAnswer = () => {
                     type="button"
                     onClick={() => handleSaveAndContinue('/model-answer')}
                     disabled={savingTranscript}
-                    className="inline-flex items-center space-x-2 px-5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-all disabled:opacity-50"
+                    className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-all disabled:opacity-50"
                   >
                     {savingTranscript ? (
                       <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

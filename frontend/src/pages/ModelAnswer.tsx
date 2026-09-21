@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, FormEvent, ChangeEvent, DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { createModelAnswerApi } from '../services/api';
@@ -7,54 +7,48 @@ import {
   CheckCircle2, 
   ArrowRight, 
   ArrowLeft, 
-  Sparkles, 
   AlertCircle,
   Hash,
-  FileCode,
-  Atom,
-  Binary,
   Layers,
   Plus,
   Trash2,
   ListOrdered,
   Tag,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  HelpCircle,
   Bookmark,
   Upload,
   FileText,
   FileCheck,
   X,
-  FileType,
   Info
 } from 'lucide-react';
+import { QuestionItem, RubricCriterion } from '../types';
 
-export const ModelAnswer = () => {
+export const ModelAnswer: React.FC = () => {
   const { token, workflowData, updateWorkflow } = useAuth();
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Mode: 'single' or 'multi'
-  const [mode, setMode] = useState(workflowData.questions?.length > 1 ? 'multi' : 'single');
+  const [mode, setMode] = useState<'single' | 'multi'>(
+    workflowData.questions && workflowData.questions.length > 1 ? 'multi' : 'single'
+  );
 
   // Single question input method: 'text' or 'upload'
-  const [inputMethod, setInputMethod] = useState('text');
-  const [pdfFile, setPdfFile] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [overrideText, setOverrideText] = useState('');
-  const [lastExtractedText, setLastExtractedText] = useState(workflowData.modelAnswerText || '');
+  const [inputMethod, setInputMethod] = useState<'text' | 'upload'>('text');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState<boolean>(false);
+  const [overrideText, setOverrideText] = useState<string>('');
+  const [lastExtractedText, setLastExtractedText] = useState<string>(workflowData.modelAnswerText || '');
 
   // Single question fields
-  const [question, setQuestion] = useState(workflowData.question || '');
-  const [modelAnswerText, setModelAnswerText] = useState(workflowData.modelAnswerText || '');
-  const [maxMarks, setMaxMarks] = useState(workflowData.maxMarks || 10);
+  const [question, setQuestion] = useState<string>(workflowData.question || '');
+  const [modelAnswerText, setModelAnswerText] = useState<string>(workflowData.modelAnswerText || '');
+  const [maxMarks, setMaxMarks] = useState<number | string>(workflowData.maxMarks || 10);
 
   // Multi-question Exam fields
-  const [examTitle, setExamTitle] = useState(workflowData.examTitle || '');
-  const [examSubject, setExamSubject] = useState(workflowData.examSubject || '');
-  const [questions, setQuestions] = useState(
+  const [examTitle, setExamTitle] = useState<string>(workflowData.examTitle || '');
+  const [examSubject, setExamSubject] = useState<string>(workflowData.examSubject || '');
+  const [questions, setQuestions] = useState<QuestionItem[]>(
     workflowData.questions && workflowData.questions.length > 0
       ? workflowData.questions
       : [
@@ -68,9 +62,9 @@ export const ModelAnswer = () => {
         ]
   );
 
-  const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(Boolean(workflowData.modelAnswerId));
-  const [error, setError] = useState('');
+  const [saving, setSaving] = useState<boolean>(false);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(Boolean(workflowData.modelAnswerId));
+  const [error, setError] = useState<string>('');
 
   // Multi-Question Handlers
   const handleAddQuestion = () => {
@@ -87,25 +81,27 @@ export const ModelAnswer = () => {
     ]);
   };
 
-  const handleRemoveQuestion = (index) => {
+  const handleRemoveQuestion = (index: number) => {
     if (questions.length <= 1) {
-      setError("An exam paper must have at least one question.");
+      setError('An exam paper must have at least one question.');
       return;
     }
-    const filtered = questions.filter((_, i) => i !== index).map((q, idx) => ({
-      ...q,
-      q_num: idx + 1
-    }));
+    const filtered = questions
+      .filter((_, i) => i !== index)
+      .map((q, idx) => ({
+        ...q,
+        q_num: idx + 1
+      }));
     setQuestions(filtered);
   };
 
-  const handleQuestionChange = (index, field, value) => {
+  const handleQuestionChange = (index: number, field: keyof QuestionItem, value: any) => {
     const updated = [...questions];
-    updated[index][field] = value;
+    (updated[index] as any)[field] = value;
     setQuestions(updated);
   };
 
-  const handleAddRubricStep = (qIndex) => {
+  const handleAddRubricStep = (qIndex: number) => {
     const updated = [...questions];
     const q = updated[qIndex];
     const rCount = (q.rubric || []).length + 1;
@@ -119,30 +115,36 @@ export const ModelAnswer = () => {
     setQuestions(updated);
   };
 
-  const handleRemoveRubricStep = (qIndex, rIndex) => {
+  const handleRemoveRubricStep = (qIndex: number, rIndex: number) => {
     const updated = [...questions];
-    updated[qIndex].rubric = updated[qIndex].rubric.filter((_, i) => i !== rIndex);
-    setQuestions(updated);
+    if (updated[qIndex].rubric) {
+      updated[qIndex].rubric = updated[qIndex].rubric!.filter((_, i) => i !== rIndex);
+      setQuestions(updated);
+    }
   };
 
-  const handleRubricChange = (qIndex, rIndex, field, value) => {
+  const handleRubricChange = (qIndex: number, rIndex: number, field: keyof RubricCriterion, value: any) => {
     const updated = [...questions];
-    updated[qIndex].rubric[rIndex][field] = value;
-    setQuestions(updated);
+    if (updated[qIndex].rubric && updated[qIndex].rubric![rIndex]) {
+      (updated[qIndex].rubric![rIndex] as any)[field] = value;
+      setQuestions(updated);
+    }
   };
 
-  const handleRubricKeywordsChange = (qIndex, rIndex, rawStr) => {
+  const handleRubricKeywordsChange = (qIndex: number, rIndex: number, rawStr: string) => {
     const kws = rawStr.split(',').map((k) => k.trim()).filter(Boolean);
     const updated = [...questions];
-    updated[qIndex].rubric[rIndex].keywords = kws;
-    setQuestions(updated);
+    if (updated[qIndex].rubric && updated[qIndex].rubric![rIndex]) {
+      updated[qIndex].rubric![rIndex].keywords = kws;
+      setQuestions(updated);
+    }
   };
 
   const calculatedTotalMarks = mode === 'multi'
-    ? questions.reduce((sum, q) => sum + (parseFloat(q.max_marks) || 0), 0)
-    : parseFloat(maxMarks) || 0;
+    ? questions.reduce((sum, q) => sum + (parseFloat(String(q.max_marks)) || 0), 0)
+    : parseFloat(String(maxMarks)) || 0;
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setPdfFile(file);
@@ -150,7 +152,7 @@ export const ModelAnswer = () => {
     }
   };
 
-  const handleDrag = (e) => {
+  const handleDrag = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
@@ -160,7 +162,7 @@ export const ModelAnswer = () => {
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -177,7 +179,7 @@ export const ModelAnswer = () => {
     }
   };
 
-  const handleSave = async (e) => {
+  const handleSave = async (e?: FormEvent) => {
     e?.preventDefault();
     setError('');
 
@@ -187,7 +189,6 @@ export const ModelAnswer = () => {
         return;
       }
       
-      // If upload mode without file and without typed override text
       if (inputMethod === 'upload' && !pdfFile && !overrideText.trim()) {
         setError('Please upload a model answer PDF file or switch to Type Text mode.');
         return;
@@ -198,7 +199,7 @@ export const ModelAnswer = () => {
         return;
       }
 
-      const marksNum = parseFloat(maxMarks);
+      const marksNum = parseFloat(String(maxMarks));
       if (isNaN(marksNum) || marksNum <= 0 || marksNum > 500) {
         setError('Maximum marks must be between 1 and 500.');
         return;
@@ -211,7 +212,7 @@ export const ModelAnswer = () => {
           const formData = new FormData();
           formData.append('file', pdfFile);
           formData.append('question', question.trim());
-          formData.append('max_marks', marksNum);
+          formData.append('max_marks', marksNum.toString());
           formData.append('title', question.trim().slice(0, 50));
           formData.append('subject', examSubject || 'General');
           if (overrideText.trim()) {
@@ -251,11 +252,11 @@ export const ModelAnswer = () => {
           modelAnswerText: savedText,
           maxMarks: marksNum,
           examTitle: question.trim().slice(0, 50),
-          questions: null,
+          questions: [],
         });
 
         setSaveSuccess(true);
-      } catch (err) {
+      } catch (err: any) {
         const errorDetail = err.response?.data?.detail || err.message || 'Failed to save model answer.';
         setError(errorDetail);
       } finally {
@@ -289,11 +290,11 @@ export const ModelAnswer = () => {
             q_num: idx + 1,
             question: q.question.trim(),
             model_answer: q.model_answer.trim(),
-            max_marks: parseFloat(q.max_marks) || 5.0,
+            max_marks: parseFloat(String(q.max_marks)) || 5.0,
             rubric: (q.rubric || []).map((r, rIdx) => ({
               id: r.id || `q${idx + 1}_r${rIdx + 1}`,
               criterion: r.criterion.trim(),
-              max_marks: parseFloat(r.max_marks) || 2.0,
+              max_marks: parseFloat(String(r.max_marks)) || 2.0,
               keywords: r.keywords || [],
             }))
           }))
@@ -312,7 +313,7 @@ export const ModelAnswer = () => {
         });
 
         setSaveSuccess(true);
-      } catch (err) {
+      } catch (err: any) {
         const errorDetail = err.response?.data?.detail || err.message || 'Failed to save multi-question exam paper.';
         setError(errorDetail);
       } finally {
@@ -773,7 +774,7 @@ export const ModelAnswer = () => {
                     </div>
                   ) : (
                     <div className="space-y-2.5">
-                      {q.rubric.map((r, rIdx) => (
+                      {q.rubric!.map((r, rIdx) => (
                         <div key={rIdx} className="p-3 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-2 text-xs">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex-1">

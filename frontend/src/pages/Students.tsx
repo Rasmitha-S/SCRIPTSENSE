@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getStudentsApi, createStudentApi, deleteStudentApi } from '../services/api';
@@ -10,36 +10,33 @@ import {
   ArrowRight, 
   CheckCircle2, 
   AlertCircle, 
-  User, 
+  User as UserIcon, 
   Hash, 
-  Sparkles, 
-  Layers,
-  GraduationCap,
-  ChevronRight,
-  Filter,
-  Trash2,
-  X
+  GraduationCap, 
+  Trash2, 
+  X 
 } from 'lucide-react';
+import { Student } from '../types';
 
-export const Students = () => {
+export const Students: React.FC = () => {
   const { token, updateWorkflow } = useAuth();
   const navigate = useNavigate();
 
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   
   // New Student Form state
-  const [newName, setNewName] = useState('');
-  const [newRoll, setNewRoll] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [newName, setNewName] = useState<string>('');
+  const [newRoll, setNewRoll] = useState<string>('');
+  const [creating, setCreating] = useState<boolean>(false);
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [successMsg, setSuccessMsg] = useState<string>('');
 
   // Delete Modal state
-  const [studentToDelete, setStudentToDelete] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [deleting, setDeleting] = useState<boolean>(false);
 
   const fetchStudents = async () => {
     if (!token) return;
@@ -48,7 +45,7 @@ export const Students = () => {
       const data = await getStudentsApi(token);
       setStudents(data || []);
     } catch (err) {
-      console.warn("Failed to load students:", err);
+      console.warn('Failed to load students:', err);
     } finally {
       setLoading(false);
     }
@@ -64,7 +61,7 @@ export const Students = () => {
       setSuccessMsg(res.message || `Student "${studentToDelete.name}" was removed from the classroom roster.`);
       setStudents((prev) => prev.filter((s) => s.id !== studentToDelete.id));
       setStudentToDelete(null);
-    } catch (err) {
+    } catch (err: any) {
       const detail = err.response?.data?.detail || err.message || 'Failed to delete student.';
       setError(detail);
     } finally {
@@ -76,7 +73,7 @@ export const Students = () => {
     fetchStudents();
   }, [token]);
 
-  const handleSelectStudentForUpload = (student) => {
+  const handleSelectStudentForUpload = (student: Student) => {
     updateWorkflow({
       studentId: student.id,
       studentName: student.name,
@@ -92,7 +89,7 @@ export const Students = () => {
     navigate('/upload');
   };
 
-  const handleCreateStudent = async (e) => {
+  const handleCreateStudent = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
@@ -108,7 +105,7 @@ export const Students = () => {
       const created = await createStudentApi(
         {
           name: newName.trim(),
-          roll_number: newRoll.trim() || null,
+          roll_number: newRoll.trim() || undefined,
         },
         token
       );
@@ -124,7 +121,7 @@ export const Students = () => {
       setTimeout(() => {
         handleSelectStudentForUpload(created);
       }, 800);
-    } catch (err) {
+    } catch (err: any) {
       const detail = err.response?.data?.detail || err.message || 'Failed to register student.';
       setError(detail);
     } finally {
@@ -137,7 +134,7 @@ export const Students = () => {
     if (!q) return true;
     const nameMatch = s.name?.toLowerCase().includes(q);
     const rollMatch = s.roll_number?.toLowerCase().includes(q);
-    return nameMatch || rollMatch;
+    return Boolean(nameMatch || rollMatch);
   });
 
   return (
@@ -206,7 +203,7 @@ export const Students = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2 flex items-center space-x-1.5">
-                  <User className="w-3.5 h-3.5 text-brand-400" />
+                  <UserIcon className="w-3.5 h-3.5 text-brand-400" />
                   <span>Student Full Name <span className="text-rose-400">*</span></span>
                 </label>
                 <input

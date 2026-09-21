@@ -1,40 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getAdminStudentsApi, getAdminTeachersApi } from '../../services/api';
+import { AdminStudentItem, TeacherResponse } from '../../types';
 import { 
   Users, 
   Search, 
   Filter, 
   RotateCcw, 
   UserCog, 
-  FileText, 
-  Hash, 
-  CheckCircle2, 
-  Clock, 
   AlertCircle 
 } from 'lucide-react';
 
-export const AdminStudents = () => {
+export const AdminStudents: React.FC = () => {
   const { token } = useAuth();
-  const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [students, setStudents] = useState<AdminStudentItem[]>([]);
+  const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
-  const fetchData = async (teacherFilter = '') => {
+  const fetchData = async (teacherFilter: string = '') => {
     if (!token) return;
     setLoading(true);
     setError('');
     try {
       const [studentsData, teachersData] = await Promise.all([
-        getAdminStudentsApi(teacherFilter ? Number(teacherFilter) : null, token),
+        getAdminStudentsApi(teacherFilter ? Number(teacherFilter) : undefined, token),
         getAdminTeachersApi(token).catch(() => []),
       ]);
       setStudents(studentsData || []);
       setTeachers(teachersData || []);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Failed to fetch students.');
     } finally {
       setLoading(false);
@@ -178,7 +175,7 @@ export const AdminStudents = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="px-5 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-5 py-8 text-center text-slate-500">
                     No student records found matching your filters.
                   </td>
                 </tr>

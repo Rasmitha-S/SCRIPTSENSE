@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { createTestApi, getStudentsApi, extractTextApi } from '../services/api';
+import { StudentResponse, TestResponse, TestCreatePayload, RubricItem, InlineStudentCreate } from '../types';
 import { 
   FileText, 
   Layers, 
@@ -11,62 +12,69 @@ import {
   Trash2, 
   CheckCircle2, 
   AlertCircle, 
-  Sparkles, 
   ArrowRight, 
   ArrowLeft,
-  Atom,
-  Binary,
   CheckSquare,
   Square,
   UserPlus,
-  Hash,
-  User,
-  HelpCircle,
-  Clock,
-  ShieldCheck,
   UploadCloud,
-  FileUp,
   FileCheck,
-  Edit3,
   Loader2,
   Info,
-  X,
-  FileType,
-  File,
-  RotateCcw
+  X
 } from 'lucide-react';
 
-export const CreateTest = () => {
+interface AttachedFileInfo {
+  name: string;
+  size: string;
+  type: string;
+}
+
+interface MultiQuestionState {
+  q_num: number;
+  question: string;
+  model_answer: string;
+  max_marks: number | string;
+  rubric: RubricItem[];
+  inputMethod: 'text' | 'upload';
+  attachedFile: AttachedFileInfo | null;
+  isExtracting: boolean;
+  extractError: string;
+  extractSuccess: boolean;
+  dragActive: boolean;
+}
+
+export const CreateTest: React.FC = () => {
   const { token, updateWorkflow } = useAuth();
   const navigate = useNavigate();
 
   // Test Info
-  const [testName, setTestName] = useState('');
-  const [subject, setSubject] = useState('');
+  const [testName, setTestName] = useState<string>('');
+  const [subject, setSubject] = useState<string>('');
 
   // Mode: 'single' | 'multi'
-  const [mode, setMode] = useState('multi');
+  const [mode, setMode] = useState<'single' | 'multi'>('multi');
 
   // Single Question fields
-  const [singleQuestion, setSingleQuestion] = useState('');
-  const [singleAnswer, setSingleAnswer] = useState('');
-  const [singleMaxMarks, setSingleMaxMarks] = useState(10.0);
-  const [singleInputMethod, setSingleInputMethod] = useState('text'); // 'text' | 'upload'
-  const [singleFile, setSingleFile] = useState(null);
-  const [singleExtracting, setSingleExtracting] = useState(false);
-  const [singleExtractError, setSingleExtractError] = useState('');
-  const [singleDragActive, setSingleDragActive] = useState(false);
-  const singleFileInputRef = useRef(null);
+  const [singleQuestion, setSingleQuestion] = useState<string>('');
+  const [singleAnswer, setSingleAnswer] = useState<string>('');
+  const [singleMaxMarks, setSingleMaxMarks] = useState<number | string>(10.0);
+  const [singleInputMethod, setSingleInputMethod] = useState<'text' | 'upload'>('text');
+  const [singleFile, setSingleFile] = useState<AttachedFileInfo | null>(null);
+  const [singleExtracting, setSingleExtracting] = useState<boolean>(false);
+  const [singleExtractError, setSingleExtractError] = useState<string>('');
+  const [singleDragActive, setSingleDragActive] = useState<boolean>(false);
+  const singleFileInputRef = useRef<HTMLInputElement>(null);
 
   // Multi-Question fields
-  const [questions, setQuestions] = useState([
+  const [questions, setQuestions] = useState<MultiQuestionState[]>([
     {
       q_num: 1,
       question: '',
       model_answer: '',
       max_marks: 5.0,
       rubric: [],
-      inputMethod: 'text', // 'text' | 'upload'
+      inputMethod: 'text',
       attachedFile: null,
       isExtracting: false,
       extractError: '',
@@ -76,19 +84,19 @@ export const CreateTest = () => {
   ]);
 
   // Students Assignment
-  const [availableStudents, setAvailableStudents] = useState([]);
-  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
-  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [availableStudents, setAvailableStudents] = useState<StudentResponse[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
 
   // Quick add new student inline
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentRoll, setNewStudentRoll] = useState('');
-  const [inlineNewStudents, setInlineNewStudents] = useState([]);
+  const [newStudentName, setNewStudentName] = useState<string>('');
+  const [newStudentRoll, setNewStudentRoll] = useState<string>('');
+  const [inlineNewStudents, setInlineNewStudents] = useState<InlineStudentCreate[]>([]);
 
   // Status
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState('');
-  const [createdTest, setCreatedTest] = useState(null);
+  const [creating, setCreating] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [createdTest, setCreatedTest] = useState<TestResponse | null>(null);
 
   const allowedFileTypes = [
     'application/pdf',
@@ -122,13 +130,13 @@ export const CreateTest = () => {
 
   // Total Marks Calculation
   const totalCalculatedMarks = mode === 'multi'
-    ? questions.reduce((sum, q) => sum + (parseFloat(q.max_marks) || 0), 0)
-    : parseFloat(singleMaxMarks) || 10.0;
+    ? questions.reduce((sum, q) => sum + (parseFloat(String(q.max_marks)) || 0), 0)
+    : parseFloat(String(singleMaxMarks)) || 10.0;
 
   // Single Question File Extraction Handler
-  const handleSingleFileChange = async (file) => {
+  const handleSingleFileChange = async (file: File | undefined) => {
     if (!file) return;
-    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+    const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
     if (!allowedExtensions.includes(fileExt) && !allowedFileTypes.includes(file.type)) {
       setSingleExtractError('Unsupported file format. Please upload a PDF, DOCX, PNG, or JPG file.');
       return;
@@ -142,14 +150,14 @@ export const CreateTest = () => {
     setSingleExtracting(true);
 
     try {
-      const res = await extractTextApi(file, token);
+      const res = await extractTextApi(file, token || undefined);
       setSingleAnswer(res.extracted_text || '');
       setSingleFile({
         name: file.name,
         size: (file.size / 1024).toFixed(1) + ' KB',
         type: res.file_type || fileExt.replace('.', '').toUpperCase()
       });
-    } catch (err) {
+    } catch (err: any) {
       const detail = err.response?.data?.detail || err.message || 'Failed to extract text from file.';
       setSingleExtractError(detail);
     } finally {
@@ -184,7 +192,7 @@ export const CreateTest = () => {
     ]);
   };
 
-  const handleRemoveQuestion = (idx) => {
+  const handleRemoveQuestion = (idx: number) => {
     if (questions.length <= 1) {
       setError("A test must have at least one question.");
       return;
@@ -196,15 +204,15 @@ export const CreateTest = () => {
     setQuestions(filtered);
   };
 
-  const handleQuestionChange = (idx, field, val) => {
+  const handleQuestionChange = (idx: number, field: keyof MultiQuestionState, val: any) => {
     const updated = [...questions];
-    updated[idx][field] = val;
+    (updated[idx] as any)[field] = val;
     setQuestions(updated);
   };
 
-  const handleQuestionFileUpload = async (qIdx, file) => {
+  const handleQuestionFileUpload = async (qIdx: number, file: File | undefined) => {
     if (!file) return;
-    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+    const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
     if (!allowedExtensions.includes(fileExt) && !allowedFileTypes.includes(file.type)) {
       const updated = [...questions];
       updated[qIdx].extractError = 'Unsupported format. Please upload PDF, DOCX, PNG, or JPG.';
@@ -224,7 +232,7 @@ export const CreateTest = () => {
     setQuestions([...updated]);
 
     try {
-      const res = await extractTextApi(file, token);
+      const res = await extractTextApi(file, token || undefined);
       const postUpdated = [...questions];
       postUpdated[qIdx].model_answer = res.extracted_text || '';
       postUpdated[qIdx].attachedFile = {
@@ -236,7 +244,7 @@ export const CreateTest = () => {
       postUpdated[qIdx].extractSuccess = true;
       postUpdated[qIdx].extractError = '';
       setQuestions(postUpdated);
-    } catch (err) {
+    } catch (err: any) {
       const detail = err.response?.data?.detail || err.message || 'Failed to extract text from file.';
       const postUpdated = [...questions];
       postUpdated[qIdx].isExtracting = false;
@@ -245,7 +253,7 @@ export const CreateTest = () => {
     }
   };
 
-  const handleQuestionRemoveFile = (qIdx) => {
+  const handleQuestionRemoveFile = (qIdx: number) => {
     const updated = [...questions];
     updated[qIdx].attachedFile = null;
     updated[qIdx].extractError = '';
@@ -253,7 +261,7 @@ export const CreateTest = () => {
     setQuestions(updated);
   };
 
-  const handleAddRubric = (qIdx) => {
+  const handleAddRubric = (qIdx: number) => {
     const updated = [...questions];
     const q = updated[qIdx];
     const rCount = (q.rubric || []).length + 1;
@@ -267,19 +275,19 @@ export const CreateTest = () => {
     setQuestions(updated);
   };
 
-  const handleRemoveRubric = (qIdx, rIdx) => {
+  const handleRemoveRubric = (qIdx: number, rIdx: number) => {
     const updated = [...questions];
     updated[qIdx].rubric = updated[qIdx].rubric.filter((_, i) => i !== rIdx);
     setQuestions(updated);
   };
 
-  const handleRubricChange = (qIdx, rIdx, field, val) => {
+  const handleRubricChange = (qIdx: number, rIdx: number, field: keyof RubricItem, val: any) => {
     const updated = [...questions];
-    updated[qIdx].rubric[rIdx][field] = val;
+    (updated[qIdx].rubric[rIdx] as any)[field] = val;
     setQuestions(updated);
   };
 
-  const handleRubricKeywords = (qIdx, rIdx, raw) => {
+  const handleRubricKeywords = (qIdx: number, rIdx: number, raw: string) => {
     const kws = raw.split(',').map((k) => k.trim()).filter(Boolean);
     const updated = [...questions];
     updated[qIdx].rubric[rIdx].keywords = kws;
@@ -287,7 +295,7 @@ export const CreateTest = () => {
   };
 
   // Student selection handlers
-  const handleToggleStudent = (id) => {
+  const handleToggleStudent = (id: number) => {
     setSelectedStudentIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -301,26 +309,26 @@ export const CreateTest = () => {
     }
   };
 
-  const handleAddInlineStudent = (e) => {
+  const handleAddInlineStudent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudentName.trim()) return;
     setInlineNewStudents([
       ...inlineNewStudents,
       {
         name: newStudentName.trim(),
-        roll_number: newStudentRoll.trim() || null
+        roll_number: newStudentRoll.trim() || undefined
       }
     ]);
     setNewStudentName('');
     setNewStudentRoll('');
   };
 
-  const handleRemoveInlineStudent = (idx) => {
+  const handleRemoveInlineStudent = (idx: number) => {
     setInlineNewStudents(inlineNewStudents.filter((_, i) => i !== idx));
   };
 
   // Submit
-  const handleCreateTestSubmit = async (e) => {
+  const handleCreateTestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -354,7 +362,7 @@ export const CreateTest = () => {
     setCreating(true);
 
     try {
-      const payload = {
+      const payload: TestCreatePayload = {
         test_name: testName.trim(),
         subject: subject.trim() || 'General',
         max_marks: totalCalculatedMarks,
@@ -370,17 +378,17 @@ export const CreateTest = () => {
           q_num: idx + 1,
           question: q.question.trim(),
           model_answer: q.model_answer.trim(),
-          max_marks: parseFloat(q.max_marks) || 5.0,
+          max_marks: parseFloat(String(q.max_marks)) || 5.0,
           rubric: (q.rubric || []).map((r, rIdx) => ({
             id: r.id || `q${idx + 1}_r${rIdx + 1}`,
             criterion: r.criterion.trim(),
-            max_marks: parseFloat(r.max_marks) || 2.0,
+            max_marks: parseFloat(String(r.max_marks)) || 2.0,
             keywords: r.keywords || [],
           }))
         }));
       }
 
-      const res = await createTestApi(payload, token);
+      const res = await createTestApi(payload, token || undefined);
       setCreatedTest(res);
 
       updateWorkflow({
@@ -392,7 +400,7 @@ export const CreateTest = () => {
         maxMarks: res.max_marks,
         questions: res.questions,
       });
-    } catch (err) {
+    } catch (err: any) {
       const errorDetail = err.response?.data?.detail || err.message || 'Failed to create test.';
       setError(errorDetail);
     } finally {
@@ -478,9 +486,7 @@ export const CreateTest = () => {
       {/* Main Creation Form */}
       <form onSubmit={handleCreateTestSubmit} className="space-y-8">
         
-        {/* ============================================================ */}
-        {/* SECTION 1: TEST METADATA                                      */}
-        {/* ============================================================ */}
+        {/* SECTION 1: TEST METADATA */}
         <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-brand-400">
@@ -522,9 +528,7 @@ export const CreateTest = () => {
           </div>
         </div>
 
-        {/* ============================================================ */}
-        {/* SECTION 2: QUESTIONS & MODEL ANSWERS (Configured ONCE)       */}
-        {/* ============================================================ */}
+        {/* SECTION 2: QUESTIONS & MODEL ANSWERS */}
         <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
             <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-violet-400">
@@ -556,9 +560,7 @@ export const CreateTest = () => {
             </div>
           </div>
 
-          {/* ============================================================ */}
-          {/* SINGLE QUESTION MODE                                         */}
-          {/* ============================================================ */}
+          {/* SINGLE QUESTION MODE */}
           {mode === 'single' ? (
             <div className="space-y-5">
               <div>
@@ -777,9 +779,7 @@ export const CreateTest = () => {
               </div>
             </div>
           ) : (
-            /* ============================================================ */
-            /* MULTI-QUESTION MODE                                          */
-            /* ============================================================ */
+            /* MULTI-QUESTION MODE */
             <div className="space-y-6">
               {questions.map((q, qIdx) => (
                 <div
@@ -1078,9 +1078,7 @@ export const CreateTest = () => {
           )}
         </div>
 
-        {/* ============================================================ */}
-        {/* SECTION 3: ASSIGN STUDENTS TO THIS TEST                      */}
-        {/* ============================================================ */}
+        {/* SECTION 3: ASSIGN STUDENTS TO THIS TEST */}
         <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
             <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-emerald-400">

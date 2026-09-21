@@ -6,10 +6,10 @@ import {
   updateAdminTeacherApi, 
   deleteAdminTeacherApi 
 } from '../../services/api';
+import { TeacherResponse, AdminTeacherCreatePayload, AdminTeacherUpdatePayload } from '../../types';
 import { 
   UserCog, 
   UserPlus, 
-  Users, 
   Mail, 
   User, 
   Lock, 
@@ -21,49 +21,48 @@ import {
   X, 
   RotateCcw,
   Check,
-  ShieldAlert,
-  UploadCloud
+  ShieldAlert
 } from 'lucide-react';
 
-export const AdminTeachers = () => {
-  const { token, user } = useAuth();
-  const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+export const AdminTeachers: React.FC = () => {
+  const { token } = useAuth();
+  const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [successMsg, setSuccessMsg] = useState<string>('');
 
   // Modal States
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
 
   // Form State for Add Teacher
-  const [addForm, setAddForm] = useState({
+  const [addForm, setAddForm] = useState<AdminTeacherCreatePayload>({
     name: '',
     username: '',
     email: '',
     password: '',
     role: 'teacher',
   });
-  const [addLoading, setAddLoading] = useState(false);
-  const [addError, setAddError] = useState('');
+  const [addLoading, setAddLoading] = useState<boolean>(false);
+  const [addError, setAddError] = useState<string>('');
 
   // Form State for Edit Teacher
-  const [selectedTeacher, setSelectedTeacher] = useState(null);
-  const [editForm, setEditForm] = useState({
+  const [selectedTeacher, setSelectedTeacher] = useState<TeacherResponse | null>(null);
+  const [editForm, setEditForm] = useState<AdminTeacherUpdatePayload & { password?: string }>({
     name: '',
     username: '',
     email: '',
     password: '',
     is_active: true,
   });
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState('');
+  const [editLoading, setEditLoading] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string>('');
 
   // Delete State
-  const [teacherToDelete, setTeacherToDelete] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [teacherToDelete, setTeacherToDelete] = useState<TeacherResponse | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   const fetchTeachers = async () => {
     if (!token) return;
@@ -72,7 +71,7 @@ export const AdminTeachers = () => {
     try {
       const data = await getAdminTeachersApi(token);
       setTeachers(data || []);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Failed to fetch teachers.');
     } finally {
       setLoading(false);
@@ -84,7 +83,7 @@ export const AdminTeachers = () => {
   }, [token]);
 
   // Handle Add Teacher Submit
-  const handleAddSubmit = async (e) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddError('');
 
@@ -103,13 +102,13 @@ export const AdminTeachers = () => {
           password: addForm.password.trim(),
           role: addForm.role || 'teacher',
         },
-        token
+        token || undefined
       );
       setSuccessMsg(`Teacher account '${addForm.username}' created successfully.`);
       setIsAddModalOpen(false);
       setAddForm({ name: '', username: '', email: '', password: '', role: 'teacher' });
       fetchTeachers();
-    } catch (err) {
+    } catch (err: any) {
       const detail = err.response?.data?.detail || err.message || 'Failed to create teacher account.';
       setAddError(detail);
     } finally {
@@ -118,7 +117,7 @@ export const AdminTeachers = () => {
   };
 
   // Open Edit Modal
-  const openEditModal = (t) => {
+  const openEditModal = (t: TeacherResponse) => {
     setSelectedTeacher(t);
     setEditForm({
       name: t.name || '',
@@ -132,28 +131,28 @@ export const AdminTeachers = () => {
   };
 
   // Handle Edit Teacher Submit
-  const handleEditSubmit = async (e) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeacher) return;
     setEditError('');
 
     setEditLoading(true);
     try {
-      const payload = {
-        name: editForm.name.trim(),
-        username: editForm.username.trim(),
-        email: editForm.email.trim(),
+      const payload: AdminTeacherUpdatePayload = {
+        name: editForm.name?.trim(),
+        username: editForm.username?.trim(),
+        email: editForm.email?.trim(),
         is_active: editForm.is_active,
       };
       if (editForm.password && editForm.password.trim().length >= 4) {
         payload.password = editForm.password.trim();
       }
 
-      await updateAdminTeacherApi(selectedTeacher.id, payload, token);
+      await updateAdminTeacherApi(selectedTeacher.id, payload, token || undefined);
       setSuccessMsg(`Teacher '${editForm.username}' updated successfully.`);
       setIsEditModalOpen(false);
       fetchTeachers();
-    } catch (err) {
+    } catch (err: any) {
       const detail = err.response?.data?.detail || err.message || 'Failed to update teacher.';
       setEditError(detail);
     } finally {
@@ -162,7 +161,7 @@ export const AdminTeachers = () => {
   };
 
   // Open Delete Confirmation
-  const openDeleteModal = (t) => {
+  const openDeleteModal = (t: TeacherResponse) => {
     setTeacherToDelete(t);
     setIsDeleteModalOpen(true);
   };
@@ -172,12 +171,12 @@ export const AdminTeachers = () => {
     if (!teacherToDelete) return;
     setDeleteLoading(true);
     try {
-      await deleteAdminTeacherApi(teacherToDelete.id, token);
+      await deleteAdminTeacherApi(teacherToDelete.id, token || undefined);
       setSuccessMsg(`Teacher '${teacherToDelete.name}' (ID: ${teacherToDelete.id}) removed successfully.`);
       setIsDeleteModalOpen(false);
       setTeacherToDelete(null);
       fetchTeachers();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Failed to delete teacher.');
     } finally {
       setDeleteLoading(false);
@@ -340,7 +339,7 @@ export const AdminTeachers = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-5 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
                     No teacher accounts found matching your query.
                   </td>
                 </tr>
@@ -350,9 +349,7 @@ export const AdminTeachers = () => {
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* MODAL 1: ADD NEW TEACHER                                 */}
-      {/* ======================================================== */}
+      {/* MODAL 1: ADD NEW TEACHER */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="glass-panel w-full max-w-md p-6 rounded-2xl border border-amber-500/30 shadow-2xl space-y-5 bg-slate-900/95">
@@ -481,9 +478,7 @@ export const AdminTeachers = () => {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* MODAL 2: EDIT TEACHER                                    */}
-      {/* ======================================================== */}
+      {/* MODAL 2: EDIT TEACHER */}
       {isEditModalOpen && selectedTeacher && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="glass-panel w-full max-w-md p-6 rounded-2xl border border-amber-500/30 shadow-2xl space-y-5 bg-slate-900/95">
@@ -515,7 +510,7 @@ export const AdminTeachers = () => {
                 <input
                   type="text"
                   required
-                  value={editForm.name}
+                  value={editForm.name || ''}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   className="glass-input block w-full px-3 py-2 text-xs rounded-xl"
                 />
@@ -528,7 +523,7 @@ export const AdminTeachers = () => {
                 <input
                   type="text"
                   required
-                  value={editForm.username}
+                  value={editForm.username || ''}
                   onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
                   className="glass-input block w-full px-3 py-2 text-xs rounded-xl font-mono"
                 />
@@ -541,7 +536,7 @@ export const AdminTeachers = () => {
                 <input
                   type="email"
                   required
-                  value={editForm.email}
+                  value={editForm.email || ''}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                   className="glass-input block w-full px-3 py-2 text-xs rounded-xl"
                 />
@@ -553,7 +548,7 @@ export const AdminTeachers = () => {
                 </label>
                 <input
                   type="password"
-                  value={editForm.password}
+                  value={editForm.password || ''}
                   onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                   placeholder="New password (optional)"
                   className="glass-input block w-full px-3 py-2 text-xs rounded-xl"
@@ -594,9 +589,7 @@ export const AdminTeachers = () => {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* MODAL 3: DELETE CONFIRMATION                             */}
-      {/* ======================================================== */}
+      {/* MODAL 3: DELETE CONFIRMATION */}
       {isDeleteModalOpen && teacherToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="glass-panel w-full max-w-sm p-6 rounded-2xl border border-rose-500/30 shadow-2xl space-y-4 bg-slate-900/95">

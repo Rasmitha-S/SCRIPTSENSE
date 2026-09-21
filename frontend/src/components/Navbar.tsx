@@ -1,36 +1,39 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  FileText, 
-  UploadCloud, 
-  BookOpen, 
-  Cpu, 
-  CheckCircle2, 
-  LogOut, 
+import {
+  FileText,
+  UploadCloud,
+  BookOpen,
+  Cpu,
+  CheckCircle2,
+  LogOut,
   LayoutDashboard,
-  Sparkles,
   Users,
   GraduationCap,
-  ExternalLink,
-  UserCheck,
-  Shield,
   UserCog,
   FileCheck,
-  Layers
+  Layers,
+  LucideIcon,
 } from 'lucide-react';
 
-export const Navbar = () => {
-  const { 
-    isAuthenticated, 
-    isAdminAuthenticated, 
-    isTeacherAuthenticated, 
-    isStudentAuthenticated, 
-    logout, 
-    user, 
-    studentSession 
+interface NavItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+export const Navbar: React.FC = () => {
+  const {
+    isAuthenticated,
+    isAdminAuthenticated,
+    isTeacherAuthenticated,
+    isStudentAuthenticated,
+    logout,
+    user,
+    studentSession,
   } = useAuth();
-  
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -39,7 +42,7 @@ export const Navbar = () => {
   }
 
   // Admin navigation items
-  const adminNavItems = [
+  const adminNavItems: NavItem[] = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/teachers', label: 'Teachers', icon: UserCog },
     { path: '/admin/students', label: 'All Students', icon: Users },
@@ -47,7 +50,7 @@ export const Navbar = () => {
   ];
 
   // Teacher navigation items
-  const teacherNavItems = [
+  const teacherNavItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/create-test', label: 'Create Test', icon: Layers },
     { path: '/students', label: 'Students', icon: Users },
@@ -59,15 +62,17 @@ export const Navbar = () => {
   ];
 
   // Student navigation items
-  const studentNavItems = [
-    { 
-      path: studentSession?.roll_number ? `/student-portal/${encodeURIComponent(studentSession.roll_number)}` : '/student-portal', 
-      label: 'My Scorecard & Marks', 
-      icon: GraduationCap 
+  const studentNavItems: NavItem[] = [
+    {
+      path: studentSession?.roll_number
+        ? `/student-portal/${encodeURIComponent(studentSession.roll_number)}`
+        : '/student-portal',
+      label: 'My Scorecard & Marks',
+      icon: GraduationCap,
     },
   ];
 
-  let currentNavItems = teacherNavItems;
+  let currentNavItems: NavItem[] = teacherNavItems;
   let homePath = '/dashboard';
   let badgeLabel = 'Teacher Workspace';
   let badgeColor = 'bg-brand-500/20 text-brand-300 border-brand-500/30';
@@ -109,13 +114,13 @@ export const Navbar = () => {
             <div>
               <div className="flex items-center space-x-1.5">
                 <span className="text-lg font-bold tracking-tight text-white font-sans">ScriptSense</span>
-                <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border ${badgeColor}`}>
+                <span
+                  className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border ${badgeColor}`}
+                >
                   {badgeLabel}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
-                {subtitleText}
-              </p>
+              <p className="text-xs text-slate-400 hidden sm:block">{subtitleText}</p>
             </div>
           </Link>
 
@@ -123,20 +128,31 @@ export const Navbar = () => {
           <nav className="hidden md:flex items-center space-x-1">
             {currentNavItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path || (item.path.startsWith('/student-portal') && location.pathname.startsWith('/student-portal'));
+              const isActive =
+                location.pathname === item.path ||
+                (item.path.startsWith('/student-portal') &&
+                  location.pathname.startsWith('/student-portal'));
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                     isActive
-                      ? isAdminAuthenticated 
+                      ? isAdminAuthenticated
                         ? 'bg-amber-600/20 text-amber-300 border border-amber-500/30 shadow-sm'
                         : 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? (isAdminAuthenticated ? 'text-amber-400' : 'text-brand-400') : 'text-slate-400'}`} />
+                  <Icon
+                    className={`w-4 h-4 ${
+                      isActive
+                        ? isAdminAuthenticated
+                          ? 'text-amber-400'
+                          : 'text-brand-400'
+                        : 'text-slate-400'
+                    }`}
+                  />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -150,20 +166,29 @@ export const Navbar = () => {
               <span>
                 {isAdminAuthenticated ? (
                   <>
-                    Admin: <strong className="text-amber-300">{user?.full_name || user?.username || 'Administrator'}</strong>
+                    Admin:{' '}
+                    <strong className="text-amber-300">
+                      {user?.full_name || user?.name || user?.username || 'Administrator'}
+                    </strong>
                   </>
                 ) : isTeacherAuthenticated ? (
                   <>
-                    Teacher: <strong className="text-slate-200">{user?.full_name || user?.username || 'Teacher'}</strong>
+                    Teacher:{' '}
+                    <strong className="text-slate-200">
+                      {user?.full_name || user?.name || user?.username || 'Teacher'}
+                    </strong>
                   </>
                 ) : (
                   <>
-                    Student: <strong className="text-emerald-300">{user?.full_name || user?.username || 'Student'}</strong>
+                    Student:{' '}
+                    <strong className="text-emerald-300">
+                      {user?.full_name || user?.name || user?.username || 'Student'}
+                    </strong>
                   </>
                 )}
               </span>
             </div>
-            
+
             <button
               onClick={handleLogout}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-colors"
@@ -186,8 +211,10 @@ export const Navbar = () => {
               key={item.path}
               to={item.path}
               className={`flex flex-col items-center py-1 px-2 rounded flex-shrink-0 ${
-                isActive 
-                  ? (isAdminAuthenticated ? 'text-amber-400 font-semibold' : 'text-brand-400 font-semibold')
+                isActive
+                  ? isAdminAuthenticated
+                    ? 'text-amber-400 font-semibold'
+                    : 'text-brand-400 font-semibold'
                   : 'text-slate-400'
               }`}
             >

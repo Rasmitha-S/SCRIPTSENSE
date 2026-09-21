@@ -1,53 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { studentPortalLookupApi } from '../services/api';
 import { MarksChatbotModal } from '../components/MarksChatbotModal';
+import { StudentPortalLookupResponse, StudentResultCard } from '../types';
 import { 
   GraduationCap, 
   Search, 
-  Award, 
   CheckCircle2, 
   Clock, 
   FileText, 
   BookOpen, 
   Cpu, 
-  Percent, 
   Sparkles, 
   UserCheck, 
-  ArrowLeft, 
   Printer, 
   AlertCircle, 
   ChevronDown, 
   ChevronUp, 
   Hash, 
   MessageSquare,
-  HelpCircle,
   ShieldCheck,
-  RefreshCw,
   LogOut,
-  ListOrdered,
-  Tag,
-  Layers,
-  Bot
+  ListOrdered
 } from 'lucide-react';
 
-export const StudentPortal = () => {
-  const { rollNumber: urlRollNumber } = useParams();
+export const StudentPortal: React.FC = () => {
+  const { rollNumber: urlRollNumber } = useParams<{ rollNumber?: string }>();
   const navigate = useNavigate();
   const { studentSession, setStudentSession, logout } = useAuth();
 
-  const [lookupQuery, setLookupQuery] = useState(
-    urlRollNumber || studentSession?.roll_number || ''
+  const [lookupQuery, setLookupQuery] = useState<string>(
+    urlRollNumber || (studentSession ? (studentSession as StudentPortalLookupResponse).roll_number || '' : '')
   );
-  const [portalData, setPortalData] = useState(studentSession || null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [expandedExamId, setExpandedExamId] = useState(null);
-  const [activeChatExam, setActiveChatExam] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [portalData, setPortalData] = useState<StudentPortalLookupResponse | null>(
+    (studentSession as StudentPortalLookupResponse) || null
+  );
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [expandedExamId, setExpandedExamId] = useState<number | null>(null);
+  const [activeChatExam, setActiveChatExam] = useState<StudentResultCard | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'evaluated' | 'uploaded'>('all');
 
-  const fetchStudentData = async (query) => {
+  const fetchStudentData = async (query: string) => {
     if (!query || !query.trim()) return;
     setLoading(true);
     setError('');
@@ -57,7 +52,7 @@ export const StudentPortal = () => {
       if (setStudentSession) {
         setStudentSession(data);
       }
-    } catch (err) {
+    } catch (err: any) {
       const detail = err.response?.data?.detail || err.message || 'Unable to find student results.';
       setError(detail);
       setPortalData(null);
@@ -70,12 +65,12 @@ export const StudentPortal = () => {
     if (urlRollNumber) {
       setLookupQuery(urlRollNumber);
       fetchStudentData(urlRollNumber);
-    } else if (studentSession && studentSession.roll_number) {
-      setPortalData(studentSession);
+    } else if (studentSession && (studentSession as StudentPortalLookupResponse).roll_number) {
+      setPortalData(studentSession as StudentPortalLookupResponse);
     }
   }, [urlRollNumber]);
 
-  const handleSearchSubmit = (e) => {
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (lookupQuery.trim()) {
       fetchStudentData(lookupQuery.trim());
@@ -91,7 +86,7 @@ export const StudentPortal = () => {
     navigate('/login');
   };
 
-  const results = portalData?.results || [];
+  const results: StudentResultCard[] = portalData?.results || [];
 
   const filteredResults = results.filter((res) => {
     if (filterStatus === 'verified') return res.status === 'Verified';
@@ -100,7 +95,7 @@ export const StudentPortal = () => {
     return true;
   });
 
-  const getGradePill = (pct) => {
+  const getGradePill = (pct: number | null | undefined) => {
     if (pct === null || pct === undefined) return { label: 'Pending', color: 'bg-slate-800 text-slate-400 border-slate-700' };
     if (pct >= 90) return { label: 'Grade: A+ (Outstanding)', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
     if (pct >= 80) return { label: 'Grade: A (Excellent)', color: 'bg-teal-500/20 text-teal-300 border-teal-500/40' };
@@ -313,7 +308,7 @@ export const StudentPortal = () => {
               <div className="space-y-6">
                 {filteredResults.map((exam, index) => {
                   const isExpanded = expandedExamId === exam.evaluation_id;
-                  const finalScore = exam.final_marks !== null ? exam.final_marks : exam.suggested_marks;
+                  const finalScore = exam.final_marks !== null && exam.final_marks !== undefined ? exam.final_marks : (exam.suggested_marks ?? 0);
                   const maxMarks = exam.max_marks || 10.0;
                   const pct = Math.round((finalScore / maxMarks) * 100);
                   const gradePill = getGradePill(pct);
@@ -409,7 +404,7 @@ export const StudentPortal = () => {
                         </div>
 
                         {/* Multi-Question Breakdown Grid on Card */}
-                        {hasQuestions && (
+                        {hasQuestions && exam.question_evaluations && (
                           <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
                             <span className="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
                               <ListOrdered className="w-4 h-4 text-brand-400" />

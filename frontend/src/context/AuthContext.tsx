@@ -1,27 +1,57 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { setAuthHeader } from '../services/api';
+import { User, StudentPortalResponse, WorkflowData, AuthContextType } from '../types';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider = ({ children }) => {
+const initialWorkflowData: WorkflowData = {
+  answerSheetId: null,
+  studentId: null,
+  studentName: '',
+  rollNumber: '',
+  testId: null,
+  testName: '',
+  fileName: '',
+  extractedText: '',
+  modelAnswerId: null,
+  question: '',
+  modelAnswerText: '',
+  maxMarks: 10,
+  examTitle: '',
+  examSubject: '',
+  questions: [],
+  rubric: [],
+  evaluationId: null,
+  similarity: null,
+  suggestedMarks: null,
+  explanation: '',
+  finalMarks: null,
+  teacherFeedback: '',
+};
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize state with localStorage persistence
-  const [token, setToken] = useState(() => {
+  const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem('scriptsense_token') || null;
   });
 
-  const [user, setUser] = useState(() => {
+  const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('scriptsense_user');
     try {
-      return saved ? JSON.parse(saved) : null;
+      return saved ? (JSON.parse(saved) as User) : null;
     } catch {
       return null;
     }
   });
 
-  const [studentSession, setStudentSession] = useState(() => {
+  const [studentSession, setStudentSession] = useState<StudentPortalResponse | null>(() => {
     const saved = localStorage.getItem('scriptsense_student_session');
     try {
-      return saved ? JSON.parse(saved) : null;
+      return saved ? (JSON.parse(saved) as StudentPortalResponse) : null;
     } catch {
       return null;
     }
@@ -35,39 +65,36 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   // Workflow tracking state for smooth page-to-page navigation
-  const [workflowData, setWorkflowData] = useState({
-    answerSheetId: null,
-    studentId: null,
-    studentName: '',
-    rollNumber: '',
-    fileName: '',
-    extractedText: '',
-    modelAnswerId: null,
-    question: '',
-    modelAnswerText: '',
-    maxMarks: 10,
-    evaluationId: null,
-    similarity: null,
-    suggestedMarks: null,
-    explanation: '',
-    finalMarks: null,
-    teacherFeedback: '',
-  });
+  const [workflowData, setWorkflowData] = useState<WorkflowData>(initialWorkflowData);
 
-  const login = (authToken, userData = { username: 'teacher1', role: 'teacher', full_name: 'Dr. Sarah Smith' }) => {
+  const login = (
+    authToken: string,
+    userData: Partial<User> = { username: 'teacher1', role: 'teacher', full_name: 'Dr. Sarah Smith' }
+  ) => {
+    const fullUserData: User = {
+      username: userData.username || 'teacher1',
+      role: userData.role || 'teacher',
+      full_name: userData.full_name || userData.name || 'Dr. Sarah Smith',
+      name: userData.name || userData.full_name || 'Dr. Sarah Smith',
+      email: userData.email,
+      user_id: userData.user_id || userData.id,
+      id: userData.id || userData.user_id,
+      ...userData,
+    };
     setToken(authToken);
-    setUser(userData);
+    setUser(fullUserData);
     setStudentSession(null);
     setAuthHeader(authToken);
     localStorage.setItem('scriptsense_token', authToken);
-    localStorage.setItem('scriptsense_user', JSON.stringify(userData));
+    localStorage.setItem('scriptsense_user', JSON.stringify(fullUserData));
     localStorage.removeItem('scriptsense_student_session');
   };
 
-  const loginAsStudent = (portalData) => {
-    const studentUser = {
+  const loginAsStudent = (portalData: StudentPortalResponse) => {
+    const studentUser: User = {
       username: portalData.student_name,
       full_name: portalData.student_name,
+      name: portalData.student_name,
       role: 'student',
       studentId: portalData.student_id,
       rollNumber: portalData.roll_number,
@@ -89,27 +116,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('scriptsense_token');
     localStorage.removeItem('scriptsense_user');
     localStorage.removeItem('scriptsense_student_session');
-    setWorkflowData({
-      answerSheetId: null,
-      studentId: null,
-      studentName: '',
-      rollNumber: '',
-      fileName: '',
-      extractedText: '',
-      modelAnswerId: null,
-      question: '',
-      modelAnswerText: '',
-      maxMarks: 10,
-      evaluationId: null,
-      similarity: null,
-      suggestedMarks: null,
-      explanation: '',
-      finalMarks: null,
-      teacherFeedback: '',
-    });
+    setWorkflowData(initialWorkflowData);
   };
 
-  const updateWorkflow = (fields) => {
+  const updateWorkflow = (fields: Partial<WorkflowData>) => {
     setWorkflowData((prev) => ({
       ...prev,
       ...fields,
@@ -144,11 +154,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
-

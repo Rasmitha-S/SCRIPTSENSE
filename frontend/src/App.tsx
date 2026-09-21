@@ -21,7 +21,7 @@ import { AdminTeachers } from './pages/admin/AdminTeachers';
 import { AdminStudents } from './pages/admin/AdminStudents';
 import { AdminResults } from './pages/admin/AdminResults';
 
-export default function App() {
+export default function App(): React.ReactElement {
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -29,7 +29,7 @@ export default function App() {
           <Navbar />
           <main className="flex-1">
             <Routes>
-              {/* Root route redirects to /login as per Section 1 */}
+              {/* Root route redirects to /login */}
               <Route path="/" element={<Navigate to="/login" replace />} />
               
               {/* Main Login Route */}

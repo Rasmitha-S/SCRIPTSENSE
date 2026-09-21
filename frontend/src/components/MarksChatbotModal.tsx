@@ -1,31 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  X, 
-  Send, 
-  Sparkles, 
-  Bot, 
-  User, 
-  HelpCircle, 
-  Loader2, 
-  BookOpen, 
-  CheckCircle2, 
-  AlertCircle,
+import {
+  X,
+  Send,
+  Sparkles,
+  Bot,
+  User as UserIcon,
+  Loader2,
   Lightbulb,
-  ArrowRight,
-  RefreshCw
 } from 'lucide-react';
 import { explainMarksApi } from '../services/api';
+import { StudentResultCard, ChatMessage, ExplainMarksRequest } from '../types';
 
-export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
-  const [messages, setMessages] = useState([]);
-  const [inputQuestion, setInputQuestion] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sourceBadge, setSourceBadge] = useState('template');
-  const messagesEndRef = useRef(null);
+interface MarksChatbotModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  examData: (StudentResultCard & { extracted_text?: string; model_answer?: string; title?: string }) | null;
+}
 
-  const finalScore = examData?.final_marks !== null && examData?.final_marks !== undefined
-    ? examData.final_marks 
-    : examData?.suggested_marks ?? 0.0;
+export const MarksChatbotModal: React.FC<MarksChatbotModalProps> = ({ isOpen, onClose, examData }) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputQuestion, setInputQuestion] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [sourceBadge, setSourceBadge] = useState<string>('template');
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  const finalScore =
+    examData?.final_marks !== null && examData?.final_marks !== undefined
+      ? examData.final_marks
+      : examData?.suggested_marks ?? 0.0;
   const maxMarks = examData?.max_marks || 10.0;
   const pct = Math.round((finalScore / maxMarks) * 100);
 
@@ -48,9 +50,10 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
   }, [isOpen, examData?.evaluation_id, examData?.answer_sheet_id]);
 
   const loadInitialExplanation = async () => {
+    if (!examData) return;
     setLoading(true);
     try {
-      const payload = {
+      const payload: ExplainMarksRequest = {
         evaluation_id: examData.evaluation_id || null,
         student_answer: examData.extracted_text || '',
         model_answer: examData.model_answer || '',
@@ -70,32 +73,38 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
           sender: 'ai',
           text: res.reply,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }
+        },
       ]);
     } catch (err) {
-      console.warn("Could not load initial AI explanation:", err);
+      console.warn('Could not load initial AI explanation:', err);
       // Fallback message using local data
       setMessages([
         {
           id: 'initial',
           sender: 'ai',
-          text: `👋 Hello! You scored **${finalScore} / ${maxMarks} marks** (${pct}%) on this submission with a **${Math.round((examData.similarity || 0) * 100)}% semantic overlap** against the teacher's model answer.\n\n` +
-                (examData.teacher_feedback ? `> 💬 **Teacher Feedback:** *"${examData.teacher_feedback}"*\n\n` : '') +
-                (examData.explanation ? `📝 **AI Evaluation Note:** *${examData.explanation}*\n\n` : '') +
-                `How can I help you understand your score better?`,
+          text:
+            `👋 Hello! You scored **${finalScore} / ${maxMarks} marks** (${pct}%) on this submission with a **${Math.round(
+              (examData.similarity || 0) * 100
+            )}% semantic overlap** against the teacher's model answer.\n\n` +
+            (examData.teacher_feedback
+              ? `> 💬 **Teacher Feedback:** *"${examData.teacher_feedback}"*\n\n`
+              : '') +
+            (examData.explanation ? `📝 **AI Evaluation Note:** *${examData.explanation}*\n\n` : '') +
+            `How can I help you understand your score better?`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }
+        },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSendMessage = async (customText = null) => {
+  const handleSendMessage = async (customText: string | null = null) => {
+    if (!examData) return;
     const questionText = typeof customText === 'string' ? customText : inputQuestion;
     if (!questionText.trim() || loading) return;
 
-    const userMsg = {
+    const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       text: questionText.trim(),
@@ -113,7 +122,7 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
         text: m.text,
       }));
 
-      const payload = {
+      const payload: ExplainMarksRequest = {
         evaluation_id: examData.evaluation_id || null,
         student_answer: examData.extracted_text || '',
         model_answer: examData.model_answer || '',
@@ -129,7 +138,7 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
       const res = await explainMarksApi(payload);
       setSourceBadge(res.source || 'template');
 
-      const aiMsg = {
+      const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
         text: res.reply,
@@ -137,8 +146,8 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      console.warn("Chat query error:", err);
-      const errMsg = {
+      console.warn('Chat query error:', err);
+      const errMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
         text: `⚠️ I encountered a temporary connection issue. Your score on this paper is **${finalScore}/${maxMarks}** (${pct}%). Please try asking again in a moment!`,
@@ -151,17 +160,23 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
   };
 
   const quickPrompts = [
-    { label: "Why did I lose marks?", query: "Why did I lose marks on this answer?" },
-    { label: "What key points did I miss?", query: "What key points did I miss compared to the model answer?" },
-    { label: "How can I get full marks?", query: "How can I get full marks next time on this question?" },
-    { label: "Explain the model solution", query: "Can you explain the teacher's reference model answer in simple terms?" },
+    { label: 'Why did I lose marks?', query: 'Why did I lose marks on this answer?' },
+    {
+      label: 'What key points did I miss?',
+      query: 'What key points did I miss compared to the model answer?',
+    },
+    { label: 'How can I get full marks?', query: 'How can I get full marks next time on this question?' },
+    {
+      label: 'Explain the model solution',
+      query: "Can you explain the teacher's reference model answer in simple terms?",
+    },
   ];
 
   if (!isOpen || !examData) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in print:hidden">
-      <div 
+      <div
         className="w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -180,7 +195,9 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
                 </h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 flex items-center space-x-1">
                   <Sparkles className="w-2.5 h-2.5" />
-                  <span>{sourceBadge.includes('gemini') ? 'Gemini 1.5 Flash' : 'ScriptSense AI Tutor'}</span>
+                  <span>
+                    {sourceBadge.includes('gemini') ? 'Gemini 1.5 Flash' : 'ScriptSense AI Tutor'}
+                  </span>
                 </span>
               </div>
               <p className="text-xs text-slate-400 truncate max-w-xs sm:max-w-md">
@@ -192,7 +209,9 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
           <div className="flex items-center space-x-3">
             <div className="hidden sm:flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold">
               <span className="text-slate-400">Score:</span>
-              <span className="text-brand-300 font-bold">{finalScore}/{maxMarks}</span>
+              <span className="text-brand-300 font-bold">
+                {finalScore}/{maxMarks}
+              </span>
               <span className="text-slate-500">({pct}%)</span>
             </div>
 
@@ -211,25 +230,35 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex items-start space-x-3 ${msg.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
+              className={`flex items-start space-x-3 ${
+                msg.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+              }`}
             >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
-                msg.sender === 'user' 
-                  ? 'bg-emerald-600 text-white' 
-                  : 'bg-gradient-to-tr from-brand-600 to-violet-600 text-white'
-              }`}>
-                {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
+                  msg.sender === 'user'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gradient-to-tr from-brand-600 to-violet-600 text-white'
+                }`}
+              >
+                {msg.sender === 'user' ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
 
-              <div className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
-                msg.sender === 'user'
-                  ? 'bg-emerald-600/90 text-white rounded-tr-none'
-                  : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none shadow-md'
-              }`}>
-                <div className="whitespace-pre-wrap space-y-2">
-                  {msg.text}
-                </div>
-                <div className={`text-[10px] mt-2 font-mono ${msg.sender === 'user' ? 'text-emerald-200/80 text-right' : 'text-slate-500 text-left'}`}>
+              <div
+                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
+                  msg.sender === 'user'
+                    ? 'bg-emerald-600/90 text-white rounded-tr-none'
+                    : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none shadow-md'
+                }`}
+              >
+                <div className="whitespace-pre-wrap space-y-2">{msg.text}</div>
+                <div
+                  className={`text-[10px] mt-2 font-mono ${
+                    msg.sender === 'user'
+                      ? 'text-emerald-200/80 text-right'
+                      : 'text-slate-500 text-left'
+                  }`}
+                >
                   {msg.timestamp}
                 </div>
               </div>
@@ -271,7 +300,13 @@ export const MarksChatbotModal = ({ isOpen, onClose, examData }) => {
         </div>
 
         {/* Input Form */}
-        <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="p-3 sm:p-4 bg-slate-900 border-t border-slate-800">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage();
+          }}
+          className="p-3 sm:p-4 bg-slate-900 border-t border-slate-800"
+        >
           <div className="relative flex items-center">
             <input
               type="text"

@@ -3,54 +3,38 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   getTestsOverviewApi, 
-  listAllResultsApi, 
   exportResultsCsvApi,
   evaluateAllTestSheetsApi,
   deleteTestApi
 } from '../services/api';
 import { 
   UploadCloud, 
-  BookOpen, 
-  Cpu, 
   CheckCircle2, 
-  ArrowRight, 
   Sparkles, 
-  FileText, 
   Layers, 
   ShieldCheck, 
   Clock, 
-  RotateCcw,
-  Percent,
-  Award,
-  AlertCircle,
-  Check,
-  ChevronRight,
-  UserCheck,
-  Users,
-  Search,
-  Hash,
-  UserPlus,
-  Download,
-  BarChart2,
-  TrendingUp,
-  GraduationCap,
-  Plus,
-  Zap,
-  Trash2,
-  ChevronDown,
-  ChevronUp
+  Check, 
+  ChevronRight, 
+  Users, 
+  Search, 
+  Download, 
+  Plus, 
+  Zap, 
+  Trash2
 } from 'lucide-react';
+import { TestOverviewResponse, TestStudentStatus } from '../types';
 
-export const Dashboard = () => {
+export const Dashboard: React.FC = () => {
   const { token, user, updateWorkflow } = useAuth();
   const navigate = useNavigate();
 
-  const [testsOverview, setTestsOverview] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [exportingCsv, setExportingCsv] = useState(false);
-  const [evaluatingTestId, setEvaluatingTestId] = useState(null);
-  const [actionSuccessMsg, setActionSuccessMsg] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [testsOverview, setTestsOverview] = useState<TestOverviewResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [exportingCsv, setExportingCsv] = useState<boolean>(false);
+  const [evaluatingTestId, setEvaluatingTestId] = useState<number | null>(null);
+  const [actionSuccessMsg, setActionSuccessMsg] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchDashboardData = async () => {
     if (!token) return;
@@ -59,7 +43,7 @@ export const Dashboard = () => {
       const data = await getTestsOverviewApi(token);
       setTestsOverview(data || []);
     } catch (err) {
-      console.warn("Could not fetch tests overview:", err);
+      console.warn('Could not fetch tests overview:', err);
     } finally {
       setLoading(false);
     }
@@ -80,15 +64,15 @@ export const Dashboard = () => {
       link.setAttribute('download', `ScriptSense_Classroom_Grades_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
-      link.parentNode.removeChild(link);
+      link.parentNode?.removeChild(link);
     } catch (err) {
-      console.warn("Failed to export CSV:", err);
+      console.warn('Failed to export CSV:', err);
     } finally {
       setExportingCsv(false);
     }
   };
 
-  const handleEvaluateAllInTest = async (testId, testName) => {
+  const handleEvaluateAllInTest = async (testId: number, testName: string) => {
     if (!token) return;
     setEvaluatingTestId(testId);
     setActionSuccessMsg('');
@@ -98,23 +82,23 @@ export const Dashboard = () => {
       setTimeout(() => setActionSuccessMsg(''), 5000);
       fetchDashboardData();
     } catch (err) {
-      console.warn("Evaluation failed:", err);
+      console.warn('Evaluation failed:', err);
     } finally {
       setEvaluatingTestId(null);
     }
   };
 
-  const handleDeleteTest = async (testId, testName) => {
+  const handleDeleteTest = async (testId: number, testName: string) => {
     if (!token || !window.confirm(`Are you sure you want to delete test "${testName}"?`)) return;
     try {
       await deleteTestApi(testId, token);
       fetchDashboardData();
     } catch (err) {
-      console.warn("Delete test failed:", err);
+      console.warn('Delete test failed:', err);
     }
   };
 
-  const handleUploadForStudent = (test, student) => {
+  const handleUploadForStudent = (test: TestOverviewResponse, student: TestStudentStatus) => {
     updateWorkflow({
       testId: test.id,
       testName: test.test_name,
@@ -127,7 +111,7 @@ export const Dashboard = () => {
     navigate('/upload');
   };
 
-  const handleViewResult = (evaluationId) => {
+  const handleViewResult = (evaluationId?: number | null) => {
     if (evaluationId) {
       navigate(`/results/${evaluationId}`);
     }
@@ -142,16 +126,26 @@ export const Dashboard = () => {
   const totalVerified = allStudentsAssigned.filter((s) => s.status === 'Verified').length;
 
   // Filtered Tests & Students
-  const filteredTests = testsOverview.map((test) => {
-    if (!searchQuery.trim()) return test;
-    const q = searchQuery.toLowerCase().trim();
-    const testMatch = test.test_name.toLowerCase().includes(q) || (test.subject && test.subject.toLowerCase().includes(q));
-    const matchingStudents = test.students.filter(
-      (s) => s.student_name.toLowerCase().includes(q) || (s.roll_number && s.roll_number.toLowerCase().includes(q))
+  const filteredTests = testsOverview
+    .map((test) => {
+      if (!searchQuery.trim()) return test;
+      const q = searchQuery.toLowerCase().trim();
+      const testMatch =
+        test.test_name.toLowerCase().includes(q) ||
+        (test.subject && test.subject.toLowerCase().includes(q));
+      const matchingStudents = test.students.filter(
+        (s) =>
+          s.student_name.toLowerCase().includes(q) ||
+          (s.roll_number && s.roll_number.toLowerCase().includes(q))
+      );
+      if (testMatch) return test;
+      return { ...test, students: matchingStudents };
+    })
+    .filter(
+      (test) =>
+        test.students.length > 0 ||
+        test.test_name.toLowerCase().includes(searchQuery.toLowerCase().trim())
     );
-    if (testMatch) return test;
-    return { ...test, students: matchingStudents };
-  }).filter((test) => test.students.length > 0 || test.test_name.toLowerCase().includes(searchQuery.toLowerCase().trim()));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
@@ -167,7 +161,7 @@ export const Dashboard = () => {
               <span className="text-xs text-slate-400">Teacher Workspace</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white mt-2 tracking-tight">
-              Welcome back, <span className="gradient-text">{user?.full_name || user?.username || 'Teacher'}</span>
+              Welcome back, <span className="gradient-text">{user?.full_name || user?.name || user?.username || 'Teacher'}</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Manage tests, upload student answer sheets, run automated evaluations, and verify grades per test.
@@ -306,7 +300,6 @@ export const Dashboard = () => {
       ) : (
         <div className="space-y-6">
           {filteredTests.map((test) => {
-            const hasUploadedSheets = test.uploaded_count > 0;
             const isEvaluatingThis = evaluatingTestId === test.id;
 
             return (

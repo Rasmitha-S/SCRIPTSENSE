@@ -1,59 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { loginApi, registerTeacherApi, resetPasswordApi, studentPortalLookupApi, setAuthHeader } from '../services/api';
 import { 
   FileText, 
   Lock, 
-  User, 
+  User as UserIcon, 
   Mail,
   ArrowRight, 
   ShieldCheck, 
   AlertCircle,
   KeyRound,
-  Sparkles,
   GraduationCap,
-  Users,
   UserPlus,
   Hash,
   CheckCircle2,
-  BookOpen,
   Shield,
-  Briefcase
 } from 'lucide-react';
 
-export const Login = () => {
+export const Login: React.FC = () => {
   // Active Main Tab: 'auth' (Educator / Admin) | 'student' (Student portal lookup)
-  const [activeTab, setActiveTab] = useState('auth');
+  const [activeTab, setActiveTab] = useState<'auth' | 'student'>('auth');
 
   // Role Selection: 'teacher' | 'admin'
-  const [role, setRole] = useState('teacher');
+  const [role, setRole] = useState<'teacher' | 'admin' | string>('teacher');
 
   // Auth Mode: 'signin' | 'register' | 'forgot'
-  const [authMode, setAuthMode] = useState('signin');
+  const [authMode, setAuthMode] = useState<'signin' | 'register' | 'forgot'>('signin');
   
   // Form Inputs
-  const [usernameOrEmail, setUsernameOrEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [email, setEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [fullName, setFullName] = useState<string>('');
 
   // Student Portal Lookup State
-  const [studentRoll, setStudentRoll] = useState('');
+  const [studentRoll, setStudentRoll] = useState<string>('');
 
   // Status & Feedback
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [successMsg, setSuccessMsg] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
   const { login, loginAsStudent } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Role-Based Login Handler
-  const handleAuth = async (e) => {
+  const handleAuth = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
@@ -82,7 +78,7 @@ export const Login = () => {
           if (data.role === 'admin') {
             navigate('/admin/dashboard');
           } else {
-            const destination = location.state?.from?.pathname || '/dashboard';
+            const destination = (location.state as any)?.from?.pathname || '/dashboard';
             navigate(destination);
           }
         } else {
@@ -113,7 +109,7 @@ export const Login = () => {
           setAuthMode('signin');
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       const errorDetail = err.response?.data?.detail || err.message || 'Authentication failed. Please check your credentials.';
       setError(errorDetail);
     } finally {
@@ -122,7 +118,7 @@ export const Login = () => {
   };
 
   // Password Reset Handler
-  const handleResetPassword = async (e) => {
+  const handleResetPassword = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
@@ -151,7 +147,7 @@ export const Login = () => {
       setNewPassword('');
       setConfirmPassword('');
       setAuthMode('signin');
-    } catch (err) {
+    } catch (err: any) {
       const errorDetail = err.response?.data?.detail || err.message || 'Failed to reset password. Please verify your username.';
       setError(errorDetail);
     } finally {
@@ -160,7 +156,7 @@ export const Login = () => {
   };
 
   // Student Marks Portal Handler
-  const handleStudentLookup = async (e) => {
+  const handleStudentLookup = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -179,7 +175,7 @@ export const Login = () => {
       } else {
         setError('No student records found.');
       }
-    } catch (err) {
+    } catch (err: any) {
       const errorDetail = err.response?.data?.detail || err.message || 'No records found matching this Roll Number.';
       setError(errorDetail);
     } finally {
@@ -187,7 +183,7 @@ export const Login = () => {
     }
   };
 
-  const quickSelectStudent = (roll) => {
+  const quickSelectStudent = (roll: string) => {
     setStudentRoll(roll);
     setError('');
   };
@@ -324,7 +320,7 @@ export const Login = () => {
               {authMode !== 'forgot' ? (
                 <form onSubmit={handleAuth} className="space-y-4">
                   
-                  {/* Role Dropdown Selector (Required Section 1 & 10) */}
+                  {/* Role Dropdown Selector */}
                   {authMode === 'signin' && (
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
@@ -355,7 +351,7 @@ export const Login = () => {
                         </label>
                         <div className="relative rounded-xl shadow-sm">
                           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                            <User className="h-4 w-4 text-slate-500" />
+                            <UserIcon className="h-4 w-4 text-slate-500" />
                           </div>
                           <input
                             type="text"
@@ -394,7 +390,7 @@ export const Login = () => {
                     </label>
                     <div className="relative rounded-xl shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <User className="h-4 w-4 text-slate-500" />
+                        <UserIcon className="h-4 w-4 text-slate-500" />
                       </div>
                       <input
                         type="text"
@@ -482,7 +478,7 @@ export const Login = () => {
                     </label>
                     <div className="relative rounded-xl shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <User className="h-4 w-4 text-slate-500" />
+                        <UserIcon className="h-4 w-4 text-slate-500" />
                       </div>
                       <input
                         type="text"

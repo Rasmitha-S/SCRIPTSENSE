@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getAdminStatsApi, getAdminEvaluationsApi, getAdminTeachersApi } from '../../services/api';
+import { AdminStatsResponse, AdminEvaluationItem, TeacherResponse } from '../../types';
 import { 
   Users, 
   UserCog, 
@@ -10,38 +11,31 @@ import {
   CheckCircle2, 
   Shield, 
   ArrowRight, 
-  TrendingUp, 
-  FileText, 
-  Layers, 
-  Sparkles,
   BarChart2,
-  Clock,
-  RotateCcw,
-  BookOpen
+  RotateCcw
 } from 'lucide-react';
 
-export const AdminDashboard = () => {
-  const { token, user } = useAuth();
-  const navigate = useNavigate();
+export const AdminDashboard: React.FC = () => {
+  const { token } = useAuth();
 
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<AdminStatsResponse>({
     total_teachers: 0,
     total_students: 0,
     total_answer_sheets: 0,
     total_evaluations: 0,
     total_verified_results: 0,
   });
-  const [recentEvaluations, setRecentEvaluations] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [recentEvaluations, setRecentEvaluations] = useState<AdminEvaluationItem[]>([]);
+  const [, setTeachers] = useState<TeacherResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const fetchAdminData = async () => {
     if (!token) return;
     setLoading(true);
     try {
       const [statsData, evalsData, teachersData] = await Promise.all([
-        getAdminStatsApi(token).catch(() => ({})),
-        getAdminEvaluationsApi(null, token).catch(() => []),
+        getAdminStatsApi(token).catch(() => null),
+        getAdminEvaluationsApi(undefined, token).catch(() => []),
         getAdminTeachersApi(token).catch(() => []),
       ]);
       if (statsData) setStats(statsData);
@@ -318,7 +312,7 @@ export const AdminDashboard = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-5 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
                     No recent evaluations found.
                   </td>
                 </tr>
