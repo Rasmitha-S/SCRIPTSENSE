@@ -1,30 +1,20 @@
 @echo off
 echo ===================================================
-echo       Building ScriptSense - Frontend and Backend
+echo   Building ScriptSense Full-Stack TypeScript App
 echo ===================================================
 
-echo [1/3] Checking Python Virtual Environment...
-if exist "%~dp0backend\venv\Scripts\python.exe" (
-    echo Python venv found at backend\venv.
-) else (
-    echo [WARNING] Python venv not found at backend\venv. Creating venv...
-    python -m venv "%~dp0backend\venv"
-    "%~dp0backend\venv\Scripts\pip.exe" install -r "%~dp0backend\requirements.txt"
-)
-
-echo [2/3] Building Frontend Production Bundle...
-cd /d "%~dp0frontend"
+echo [1/2] Compiling TypeScript Backend and Frontend Bundle...
+cd /d "%~dp0"
 call npm run build
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Frontend build failed!
+    echo [ERROR] Build failed!
     exit /b %ERRORLEVEL%
 )
 
-echo [3/3] Running Backend Verification Tests...
-cd /d "%~dp0backend"
-"%~dp0backend\venv\Scripts\python.exe" test_integration_inproc.py
+echo [2/2] Running Backend Integration Test Suite...
+call npm test
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] In-process integration tests failed!
+    echo [ERROR] Integration tests failed!
     exit /b %ERRORLEVEL%
 )
 

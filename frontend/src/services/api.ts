@@ -42,7 +42,8 @@ import {
 const API_BASE_URL: string =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL)
     ? (import.meta.env.VITE_API_BASE_URL as string)
-    : 'http://localhost:8000';
+    : '';
+
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
